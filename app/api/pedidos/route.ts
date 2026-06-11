@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
   const adicionalMap = new Map(adicionaisDb.map((a) => [a.id, a]));
 
   let subtotal = new Prisma.Decimal(0);
-  const itensData: Prisma.ItemPedidoCreateWithoutPedidoInput[] = [];
+  const itensData: Prisma.ItemPedidoUncheckedCreateWithoutPedidoInput[] = [];
 
   for (const item of itensInput) {
     const produto = produtoMap.get(item.produto_id!);
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
     }
 
     let extrasUnitario = new Prisma.Decimal(0);
-    const adicionaisData: Prisma.ItemPedidoAdicionalCreateWithoutItem_pedidoInput[] = [];
+    const adicionaisData: Prisma.ItemPedidoAdicionalUncheckedCreateWithoutItem_pedidoInput[] = [];
     for (const a of item.adicionais ?? []) {
       const adicional = a.produto_adicional_id ? adicionalMap.get(a.produto_adicional_id) : undefined;
       if (!adicional) {

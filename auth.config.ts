@@ -23,7 +23,7 @@ export const authConfig = {
       if (!isLoggedIn) return false;
 
       // Inadimplente só acessa /planos
-      const status = (auth?.user as Record<string, unknown>)?.assinatura_status as string;
+      const status = auth?.user?.assinatura_status;
       if (status === "INADIMPLENTE" && !pathname.startsWith("/planos")) {
         return Response.redirect(new URL("/planos", nextUrl));
       }
