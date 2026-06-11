@@ -1,6 +1,6 @@
 import NextAuth      from "next-auth";
 import Credentials   from "next-auth/providers/credentials";
-import { createHash } from "crypto";
+import bcrypt        from "bcryptjs";
 import { authConfig } from "./auth.config";
 import { prisma }    from "@/lib/prisma";
 
@@ -23,11 +23,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!usuario?.senha_hash) return null;
 
-        const hash = createHash("sha256")
-          .update(credentials.password as string)
-          .digest("hex");
+        const senhaValida = await bcrypt.compare(
+          credentials.password as string,
+          usuario.senha_hash,
+        );
 
-        if (hash !== usuario.senha_hash) return null;
+        if (!senhaValida) return null;
 
         await prisma.usuario.update({
           where: { id: usuario.id },
