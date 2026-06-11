@@ -1,7 +1,17 @@
-import { prisma } from "../lib/prisma";
-import { hash } from "crypto";
+import { config as loadEnv } from "dotenv";
+import path from "node:path";
+import bcrypt from "bcryptjs";
+
+// tsx não carrega .env.local automaticamente (isso é convenção do Next.js).
+// Import dinâmico após carregar o env: imports estáticos são "hoisted" e o
+// módulo lib/prisma criaria o client (lendo DATABASE_URL) antes do loadEnv rodar.
+loadEnv({ path: path.resolve(__dirname, "..", ".env.local") });
+
+let prisma: (typeof import("../lib/prisma"))["prisma"];
 
 async function main() {
+  ({ prisma } = await import("../lib/prisma"));
+
   console.log("🌱 Seed iniciado...");
 
   // Lanchonete de demonstração
@@ -31,7 +41,7 @@ async function main() {
   });
 
   // Admin padrão
-  const senhaHash = hash("sha256", "admin123");
+  const senhaHash = await bcrypt.hash("admin123", 10);
   await prisma.usuario.upsert({
     where: { lanchonete_id_email: { lanchonete_id: lanchonete.id, email: "admin@demo.com" } },
     update: {},
@@ -90,4 +100,4 @@ async function main() {
 
 main()
   .catch((e) => { console.error(e); process.exit(1); })
-  .finally(() => prisma.$disconnect());
+  .finally(() => prisma?.$disconnect());

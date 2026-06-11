@@ -426,6 +426,19 @@ model WebhookEvento {
 }
 
 // =============================================================================
+// _PEDIDO_SEQ — contador de numero_pedido sequencial por tenant
+// Usado pela função SQL next_numero_pedido() (ver migration de funções/triggers).
+// Tabela auxiliar, sem relação direta no client — evita gaps em rollback.
+// =============================================================================
+
+model PedidoSeq {
+  lanchonete_id String @id @db.Uuid
+  seq           BigInt @default(0)
+
+  @@map("_pedido_seq")
+}
+
+// =============================================================================
 // MENSAGEM_WHATSAPP — histórico de envios
 // Registrada após tentativa de envio via Evolution API.
 // Atualizada por webhook de status (delivered, read, failed).
