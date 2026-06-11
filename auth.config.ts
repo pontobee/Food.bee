@@ -41,6 +41,7 @@ export const authConfig = {
       return token;
     },
     session({ session, token }) {
+      session.user.id                = token.sub               as string;
       session.user.lanchonete_id     = token.lanchonete_id     as string;
       session.user.lanchonete_nome   = token.lanchonete_nome   as string;
       session.user.role              = token.role              as "ADMIN" | "CAIXA";
