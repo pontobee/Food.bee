@@ -75,6 +75,15 @@ enum TipoTransacao {
   DESPESA
 }
 
+// Tipo de movimentação de estoque.
+// O sinal (some ou subtrai) NÃO é guardado no número: ele vem do tipo.
+// Assim a coluna `quantidade` é sempre positiva e fica impossível gravar
+// uma entrada negativa por engano.
+enum TipoMovimentacaoEstoque {
+  ENTRADA  // reposição: compra de insumos, ajuste para mais
+  SAIDA    // baixa: desperdício, perda, consumo interno, ajuste para menos
+}
+
 enum StatusWebhook {
   PENDENTE
   PROCESSANDO
@@ -126,6 +135,7 @@ model Lanchonete {
   transacoes       Transacao[]
   mensagens_whatsapp MensagemWhatsApp[]
   webhook_eventos  WebhookEvento[]
+  movimentacoes_estoque MovimentacaoEstoque[]
 
   @@map("lanchonetes")
 }
@@ -176,6 +186,7 @@ model Usuario {
   lanchonete Lanchonete @relation(fields: [lanchonete_id], references: [id])
   pedidos    Pedido[]   // pedidos abertos por este usuário
   transacoes Transacao[]
+  movimentacoes_estoque MovimentacaoEstoque[] // movimentações que este usuário registrou
 
   // email único por tenant (mesmo e-mail pode existir em lanchonetes diferentes)
   @@unique([lanchonete_id, email])
@@ -255,6 +266,7 @@ model Produto {
   categoria    Categoria?        @relation(fields: [categoria_id], references: [id])
   adicionais   ProdutoAdicional[] // adicionais específicos deste produto
   itens_pedido ItemPedido[]
+  movimentacoes MovimentacaoEstoque[] // histórico de entradas/saídas deste produto
 
   @@index([lanchonete_id])
   @@index([lanchonete_id, categoria_id])
@@ -397,6 +409,40 @@ model Transacao {
   @@index([lanchonete_id, data(sort: Desc)])
   @@index([lanchonete_id, tipo])
   @@map("transacoes")
+}
+
+// =============================================================================
+// MOVIMENTACAO_ESTOQUE — auditoria de entradas e saídas
+// Cada linha é o registro imutável de UMA movimentação de estoque.
+// Pense num extrato bancário: nunca editamos o saldo "no escuro", lançamos
+// uma movimentação e ela explica como o saldo (Produto.estoque_atual) mudou.
+//
+// `estoque_antes` e `estoque_depois` são snapshots gravados no momento da
+// operação — assim o histórico continua correto mesmo que o produto seja
+// editado ou inativado depois. Quem grava aqui é o stock.service, sempre
+// dentro de uma transação junto com o UPDATE de Produto.estoque_atual.
+// =============================================================================
+
+model MovimentacaoEstoque {
+  id             String                  @id @default(uuid()) @db.Uuid
+  lanchonete_id  String                  @db.Uuid
+  produto_id     String                  @db.Uuid
+  usuario_id     String                  @db.Uuid // quem registrou a movimentação
+  tipo           TipoMovimentacaoEstoque
+  quantidade     Int // sempre POSITIVO — o sinal vem de `tipo`
+  estoque_antes  Int // saldo do produto antes desta movimentação (snapshot)
+  estoque_depois Int // saldo do produto depois desta movimentação (snapshot)
+  motivo         String? // "Compra de insumos", "Desperdício" etc.
+  criado_em      DateTime                @default(now()) @db.Timestamptz(3)
+
+  lanchonete Lanchonete @relation(fields: [lanchonete_id], references: [id])
+  produto    Produto    @relation(fields: [produto_id], references: [id])
+  usuario    Usuario    @relation(fields: [usuario_id], references: [id])
+
+  // extrato por produto e listagem cronológica (mais recente primeiro)
+  @@index([lanchonete_id, produto_id])
+  @@index([lanchonete_id, criado_em(sort: Desc)])
+  @@map("movimentacoes_estoque")
 }
 
 // =============================================================================

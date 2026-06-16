@@ -1,18 +1,31 @@
 "use client";
 
+import { useState }     from "react";
 import useSWR          from "swr";
 import { useSession }  from "next-auth/react";
-import { AlertTriangle, Package } from "lucide-react";
+import { AlertTriangle, Package, ArrowDownUp } from "lucide-react";
 import type { ProdutoDTO } from "@/types";
+import { MovimentacaoModal } from "@/components/dashboard/MovimentacaoModal";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function EstoquePage() {
   const { data: session } = useSession();
   const role              = session?.user?.role;
-  const { data = [], isLoading } = useSWR<ProdutoDTO[]>("/api/produtos", fetcher, {
+  const { data = [], isLoading, mutate } = useSWR<ProdutoDTO[]>("/api/produtos", fetcher, {
     refreshInterval: 30_000,
   });
+
+  // Controle do modal de movimentação.
+  // `modalAberto` liga/desliga; `produtoInicial` pré-seleciona quando o usuário
+  // clica em "movimentar" direto na linha de um produto.
+  const [modalAberto,    setModalAberto]    = useState(false);
+  const [produtoInicial, setProdutoInicial] = useState<string | null>(null);
+
+  function abrirModal(produtoId: string | null = null) {
+    setProdutoInicial(produtoId);
+    setModalAberto(true);
+  }
 
   const criticos = data.filter((p) => p.estoque_atual <= p.estoque_minimo);
 
@@ -23,14 +36,24 @@ export default function EstoquePage() {
           <h1 className="text-xl font-bold text-white">Estoque</h1>
           <p className="text-sm text-gray-500 mt-0.5">{data.length} produtos ativos</p>
         </div>
-        {criticos.length > 0 && (
-          <span className="flex items-center gap-1.5 text-xs font-semibold
-                           text-red-400 bg-red-500/10 border border-red-500/20
-                           px-3 py-1.5 rounded-full">
-            <AlertTriangle size={13} />
-            {criticos.length} crítico{criticos.length > 1 ? "s" : ""}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {criticos.length > 0 && (
+            <span className="flex items-center gap-1.5 text-xs font-semibold
+                             text-red-400 bg-red-500/10 border border-red-500/20
+                             px-3 py-1.5 rounded-full">
+              <AlertTriangle size={13} />
+              {criticos.length} crítico{criticos.length > 1 ? "s" : ""}
+            </span>
+          )}
+          <button
+            onClick={() => abrirModal()}
+            disabled={data.length === 0}
+            className="btn-primary text-sm disabled:opacity-50"
+          >
+            <ArrowDownUp size={15} />
+            Movimentar estoque
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -46,6 +69,7 @@ export default function EstoquePage() {
                 {role === "ADMIN" && (
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Custo</th>
                 )}
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -82,12 +106,34 @@ export default function EstoquePage() {
                         R$ {Number(produto.preco_custo ?? 0).toFixed(2).replace(".", ",")}
                       </td>
                     )}
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => abrirModal(produto.id)}
+                        className="btn-ghost text-xs px-2 min-h-0 py-1.5"
+                      >
+                        <ArrowDownUp size={13} />
+                        Movimentar
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Modal de entrada/saída. Ao salvar: revalida a lista (mutate) e fecha. */}
+      {modalAberto && (
+        <MovimentacaoModal
+          produtos={data}
+          produtoInicialId={produtoInicial}
+          onClose={() => setModalAberto(false)}
+          onSalvo={() => {
+            mutate();              // recarrega /api/produtos → saldo atualizado na tabela
+            setModalAberto(false);
+          }}
+        />
       )}
     </div>
   );

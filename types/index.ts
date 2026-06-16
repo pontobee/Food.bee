@@ -64,6 +64,17 @@ export interface ProdutoDTO {
   adicionais:    { id: string; nome: string; tipo: TipoAdicional; preco_extra: number }[];
 }
 
+// Membro da equipe — retorno de GET /api/equipe.
+// Datas chegam como string (JSON não tem tipo Date nativo).
+export interface MembroDTO {
+  id:               string;
+  nome:             string;
+  email:            string;
+  role:             RoleUsuario;
+  ultimo_acesso_em: string | null;
+  criado_em:        string;
+}
+
 export interface StatsDTO {
   pedidos_hoje:     number;
   faturamento_hoje: number;
