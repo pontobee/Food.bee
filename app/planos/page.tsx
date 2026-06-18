@@ -22,7 +22,7 @@ const PLANOS: Array<{
   {
     id: "BASICO",
     nome: "Básico",
-    preco: 49.9,
+    preco: 79.9,
     descricao: "Para quem está começando",
     recursos: [
       "Kanban de pedidos",
@@ -34,7 +34,7 @@ const PLANOS: Array<{
   {
     id: "PRO",
     nome: "Pro",
-    preco: 99.9,
+    preco: 179.9,
     descricao: "Para lanchonetes em crescimento",
     destaque: true,
     recursos: [

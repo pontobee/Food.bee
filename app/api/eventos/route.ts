@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     await prisma.webhookEvento.create({
       data: {
         id_externo: String(idExterno),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line
         payload:    body as any,
         status:     "PENDENTE",
       },
