@@ -6,6 +6,7 @@
 /out/
 
 # env files (contêm chaves secretas — nunca versionar)
+.env
 .env*.local
 
 # misc
