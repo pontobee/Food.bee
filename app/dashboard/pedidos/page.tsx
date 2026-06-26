@@ -1,7 +1,7 @@
 "use client";
 
-import { useSession }    from "next-auth/react";
-import { Plus, RefreshCw } from "lucide-react";
+import { useSession }                    from "next-auth/react";
+import { Plus, RefreshCw, AlertCircle } from "lucide-react";
 import { usePedidos }    from "@/hooks/usePedidos";
 import { KanbanBoard }   from "@/components/pedidos/KanbanBoard";
 import { NovoPedidoModal } from "@/components/pedidos/NovoPedidoModal";
@@ -10,7 +10,7 @@ import { useState }       from "react";
 export default function PedidosPage() {
   const { data: session }       = useSession();
   const lanchoneteId            = session?.user?.lanchonete_id ?? "";
-  const { data, isLoading, mutate } = usePedidos(lanchoneteId);
+  const { data, error, isLoading, mutate } = usePedidos(lanchoneteId);
   const [abrirModal, setAbrirModal] = useState(false);
 
   return (
@@ -45,9 +45,23 @@ export default function PedidosPage() {
 
       {/* Kanban — ocupa o restante da altura */}
       <div className="flex-1 min-h-0">
-        {isLoading && data.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-600">
+        {error ? (
+          <div className="flex flex-col items-center justify-center h-full gap-3">
+            <AlertCircle size={32} className="text-red-400" />
+            <p className="text-red-400 text-sm font-medium">Falha ao carregar pedidos</p>
+            <button onClick={() => mutate()} className="btn-ghost text-xs">
+              <RefreshCw size={13} />
+              Tentar novamente
+            </button>
+          </div>
+        ) : isLoading && data.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-gray-600 text-sm">
             Carregando…
+          </div>
+        ) : data.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-600">
+            <p className="text-sm">Nenhum pedido aberto hoje.</p>
+            <p className="text-xs">Clique em <strong className="text-gray-500">Novo pedido</strong> para começar.</p>
           </div>
         ) : (
           <KanbanBoard pedidos={data} onMutate={mutate} />
