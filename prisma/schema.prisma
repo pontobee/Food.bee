@@ -132,6 +132,7 @@ model Lanchonete {
   // relações
   assinatura       Assinatura?
   pix_config       PixConfig?
+  whatsapp_config  WhatsAppConfig?
   taxas_entrega    TaxaEntrega[]
   usuarios         Usuario[]
   clientes         Cliente[]
@@ -497,6 +498,27 @@ model PixConfig {
   lanchonete Lanchonete @relation(fields: [lanchonete_id], references: [id])
 
   @@map("pix_configs")
+}
+
+// =============================================================================
+// WHATSAPP_CONFIG — credenciais da Evolution API por tenant
+// evolution_url: URL base do container (ex: https://evolution.meusite.com)
+// evolution_api_key: chave global da instância Evolution
+// instance_nome: nome da instância criada para esta lanchonete
+// =============================================================================
+
+model WhatsAppConfig {
+  id              String   @id @default(uuid()) @db.Uuid
+  lanchonete_id   String   @unique @db.Uuid
+  evolution_url   String   @db.VarChar(255)
+  evolution_api_key String @db.Text
+  instance_nome   String   @db.VarChar(100)
+  criado_em       DateTime @default(now()) @db.Timestamptz(3)
+  atualizado_em   DateTime @updatedAt @db.Timestamptz(3)
+
+  lanchonete Lanchonete @relation(fields: [lanchonete_id], references: [id])
+
+  @@map("whatsapp_configs")
 }
 
 // =============================================================================

@@ -1,5 +1,8 @@
 -- CreateEnum
-CREATE TYPE IF NOT EXISTS "TipoEntrega" AS ENUM ('BALCAO', 'DELIVERY');
+DO $$ BEGIN
+  CREATE TYPE "TipoEntrega" AS ENUM ('BALCAO', 'DELIVERY');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateTable: zonas de entrega por tenant
 CREATE TABLE IF NOT EXISTS "taxas_entrega" (
@@ -27,7 +30,10 @@ ALTER TABLE "pedidos"
   ADD COLUMN IF NOT EXISTS "taxa_entrega"     DECIMAL(8,2),
   ADD COLUMN IF NOT EXISTS "endereco_entrega" VARCHAR(255);
 
-ALTER TABLE "pedidos"
-  ADD CONSTRAINT IF NOT EXISTS "pedidos_taxa_entrega_id_fkey"
-    FOREIGN KEY ("taxa_entrega_id") REFERENCES "taxas_entrega"("id")
-    ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "pedidos"
+    ADD CONSTRAINT "pedidos_taxa_entrega_id_fkey"
+      FOREIGN KEY ("taxa_entrega_id") REFERENCES "taxas_entrega"("id")
+      ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
