@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
-import { auth }        from "@/auth";
-import { adminGuard }  from "@/lib/auth-guards";
-import { prisma }      from "@/lib/prisma";
+import { NextResponse }                    from "next/server";
+import { auth }                            from "@/auth";
+import { adminGuard }                      from "@/lib/auth-guards";
+import { prisma }                          from "@/lib/prisma";
+import { startOfDayBRT, startOfMonthBRT } from "@/lib/timezone";
 
 // GET /api/financeiro/resumo — resumo financeiro do mês/dia (somente ADMIN)
 export async function GET() {
@@ -11,12 +12,8 @@ export async function GET() {
 
   const lid = session!.user.lanchonete_id;
 
-  const inicioDia = new Date();
-  inicioDia.setHours(0, 0, 0, 0);
-
-  const inicioMes = new Date();
-  inicioMes.setDate(1);
-  inicioMes.setHours(0, 0, 0, 0);
+  const inicioDia = startOfDayBRT();
+  const inicioMes = startOfMonthBRT();
 
   const [receitaMes, despesaMes, receitaHoje] = await Promise.all([
     prisma.transacao.aggregate({

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma, FormaPagamento, OrigemPedido, StatusPedido } from "@prisma/client";
 import { OrderValidationError, OrderNotFoundError } from "@/modules/orders/orders.errors";
+import { startOfDayBRT } from "@/lib/timezone";
 
 const FORMAS_PAGAMENTO = new Set<string>(Object.values(FormaPagamento));
 const ORIGENS_PEDIDO   = new Set<string>(Object.values(OrigemPedido));
@@ -37,8 +38,7 @@ interface TenantContext {
 
 // ── Leitura: pedidos do dia do tenant ──────────────────────────
 export function getTodaysOrders(lanchoneteId: string) {
-  const inicioDia = new Date();
-  inicioDia.setHours(0, 0, 0, 0);
+  const inicioDia = startOfDayBRT();
 
   return prisma.pedido.findMany({
     where: {

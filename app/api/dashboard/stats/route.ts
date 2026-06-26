@@ -1,15 +1,16 @@
-import { NextResponse } from "next/server";
-import { auth }       from "@/auth";
-import { authGuard }  from "@/lib/auth-guards";
-import { prisma }     from "@/lib/prisma";
+import { NextResponse }  from "next/server";
+import { auth }          from "@/auth";
+import { authGuard }     from "@/lib/auth-guards";
+import { prisma }        from "@/lib/prisma";
+import { startOfDayBRT } from "@/lib/timezone";
 
 export async function GET() {
   const session = await auth();
   const guard = authGuard(session);
   if (guard) return guard;
 
-  const lid       = session!.user.lanchonete_id;
-  const hoje      = new Date(); hoje.setHours(0, 0, 0, 0);
+  const lid  = session!.user.lanchonete_id;
+  const hoje = startOfDayBRT();
 
   const [pedidosHoje, estoqueAtivo] = await Promise.all([
     prisma.pedido.findMany({
