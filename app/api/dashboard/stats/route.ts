@@ -12,7 +12,10 @@ export async function GET() {
   const lid  = session!.user.lanchonete_id;
   const hoje = startOfDayBRT();
 
-  const [pedidosHoje, estoqueAtivo] = await Promise.all([
+  // Webhooks pendentes há mais de 5 min ou com erro — indicativo de fila travada
+  const limiteWebhook = new Date(Date.now() - 5 * 60 * 1000);
+
+  const [pedidosHoje, estoqueAtivo, webhooksPendentes] = await Promise.all([
     prisma.pedido.findMany({
       where: { lanchonete_id: lid, inativo_em: null, criado_em: { gte: hoje } },
       select: { total: true, status: true },
@@ -20,6 +23,13 @@ export async function GET() {
     prisma.produto.findMany({
       where: { lanchonete_id: lid, inativo_em: null },
       select: { estoque_atual: true, estoque_minimo: true },
+    }),
+    prisma.webhookEvento.count({
+      where: {
+        lanchonete_id: lid,
+        status: { in: ["PENDENTE", "ERRO"] },
+        recebido_em: { lte: limiteWebhook },
+      },
     }),
   ]);
 
@@ -31,9 +41,10 @@ export async function GET() {
   ).length;
 
   return NextResponse.json({
-    pedidos_hoje:     pedidosHoje.length,
-    faturamento_hoje: faturamento,
-    ticket_medio:     ticketMedio,
-    estoque_critico:  estoqueCritico,
+    pedidos_hoje:       pedidosHoje.length,
+    faturamento_hoje:   faturamento,
+    ticket_medio:       ticketMedio,
+    estoque_critico:    estoqueCritico,
+    webhooks_pendentes: webhooksPendentes,
   });
 }
