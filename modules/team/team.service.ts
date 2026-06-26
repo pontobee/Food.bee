@@ -6,7 +6,9 @@ import { TeamValidationError, EmailEmUsoError } from "@/modules/team/team.errors
 const ROLES = new Set<string>(Object.values(RoleUsuario));
 // Regex simples só para barrar erros grosseiros de digitação (a@b.c).
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const SENHA_MIN = 6;
+const SENHA_MIN         = 8;
+const SENHA_MAIUSCULA   = /[A-Z]/;
+const SENHA_NUMERO      = /[0-9]/;
 
 // ── Tipo de entrada (DTO vindo da API) ─────────────────────────
 export interface ConvidarMembroInput {
@@ -51,6 +53,12 @@ export async function convidarMembro(input: ConvidarMembroInput, lanchoneteId: s
   }
   if (!senha || senha.length < SENHA_MIN) {
     throw new TeamValidationError(`A senha precisa ter ao menos ${SENHA_MIN} caracteres`);
+  }
+  if (!SENHA_MAIUSCULA.test(senha)) {
+    throw new TeamValidationError("A senha precisa ter ao menos uma letra maiúscula");
+  }
+  if (!SENHA_NUMERO.test(senha)) {
+    throw new TeamValidationError("A senha precisa ter ao menos um número");
   }
   if (!role || !ROLES.has(role)) {
     throw new TeamValidationError("Nível de acesso inválido (use ADMIN ou CAIXA)");

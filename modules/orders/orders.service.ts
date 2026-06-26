@@ -146,6 +146,10 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
   }
 
   // 4. Número sequencial por tenant via função PG
+  // UUID inválido causaria erro silencioso no cast ::uuid — validamos antes.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lid)) {
+    throw new OrderValidationError("lanchonete_id inválido");
+  }
   const seqResult = await prisma.$queryRaw<{ next_numero_pedido: number }[]>`
     SELECT next_numero_pedido(${lid}::uuid) AS next_numero_pedido
   `;

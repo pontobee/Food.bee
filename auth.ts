@@ -1,8 +1,9 @@
 import NextAuth      from "next-auth";
 import Credentials   from "next-auth/providers/credentials";
 import bcrypt        from "bcryptjs";
-import { authConfig } from "./auth.config";
-import { prisma }    from "@/lib/prisma";
+import { authConfig }    from "./auth.config";
+import { prisma }        from "@/lib/prisma";
+import { checkRateLimit, resetRateLimit } from "@/lib/rate-limit";
 
 // Config completa (Node.js runtime only — nunca importada pelo middleware)
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -15,6 +16,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
+
+        const key = `login:${credentials.email}`;
+        const { allowed } = checkRateLimit(key);
+        if (!allowed) return null;
 
         const usuario = await prisma.usuario.findFirst({
           where: { email: credentials.email as string, inativo_em: null },
@@ -34,6 +39,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { id: usuario.id },
           data:  { ultimo_acesso_em: new Date() },
         });
+
+        resetRateLimit(key);
 
         return {
           id:                usuario.id,

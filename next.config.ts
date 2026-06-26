@@ -1,10 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Permite importar imagens de qualquer domínio externo (útil para avatares e fotos de produtos)
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "**" },
+      // Supabase Storage — logo da lanchonete e imagens de produtos
+      { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" },
     ],
   },
 };

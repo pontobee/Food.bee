@@ -35,9 +35,14 @@ export function ConvidarMembroModal({ onClose, onSalvo }: Props) {
   const [erro,        setErro]        = useState<string | null>(null);
 
   // Validação leve no front (a real está no team.service). Só evita request à toa.
-  const senhaMin = senha.length >= 6;
+  const senhaReqs = {
+    tamanho:   senha.length >= 8,
+    maiuscula: /[A-Z]/.test(senha),
+    numero:    /[0-9]/.test(senha),
+  };
+  const senhaValida = Object.values(senhaReqs).every(Boolean);
   const podeSalvar =
-    nome.trim().length >= 2 && email.trim() !== "" && senhaMin && !salvando;
+    nome.trim().length >= 2 && email.trim() !== "" && senhaValida && !salvando;
 
   async function salvar() {
     if (!podeSalvar) return;
@@ -128,8 +133,26 @@ export function ConvidarMembroModal({ onClose, onSalvo }: Props) {
                 {verSenha ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
-            {senha.length > 0 && !senhaMin && (
-              <p className="text-xs text-red-400 mt-1">A senha precisa ter ao menos 6 caracteres.</p>
+            {senha.length > 0 && (
+              <ul className="mt-2 space-y-1">
+                {[
+                  { ok: senhaReqs.tamanho,   texto: "Mínimo 8 caracteres" },
+                  { ok: senhaReqs.maiuscula, texto: "Uma letra maiúscula" },
+                  { ok: senhaReqs.numero,    texto: "Um número" },
+                ].map(({ ok, texto }) => (
+                  <li key={texto}
+                      className={`flex items-center gap-1.5 text-xs transition-colors ${
+                        ok ? "text-green-400" : "text-gray-500"
+                      }`}>
+                    <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold ${
+                      ok ? "bg-green-500/20 text-green-400" : "bg-dark-600 text-gray-600"
+                    }`}>
+                      {ok ? "✓" : "·"}
+                    </span>
+                    {texto}
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
 
