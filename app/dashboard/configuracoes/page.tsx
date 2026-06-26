@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSession }          from "next-auth/react";
-import { Settings, User, Bell, QrCode, Check, Loader2, Bike, Trash2, Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useSession }                  from "next-auth/react";
+import Image                           from "next/image";
+import { Settings, User, Bell, QrCode, Check, Loader2, Bike, Trash2, Plus, Upload } from "lucide-react";
 import type { TaxaEntregaDTO } from "@/types";
 
 function DeliverySection() {
@@ -214,6 +215,98 @@ function PixConfigSection() {
   );
 }
 
+function LogoSection() {
+  const [logoUrl,   setLogoUrl]   = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [salvo,     setSalvo]     = useState(false);
+  const [preview,   setPreview]   = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch("/api/configuracoes/logo")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.logo_url) setLogoUrl(d.logo_url); });
+  }, []);
+
+  async function handleFile(file: File) {
+    setPreview(URL.createObjectURL(file));
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("logo", file);
+      const res  = await fetch("/api/configuracoes/logo", { method: "POST", body: form });
+      const data = await res.json();
+      if (data.logo_url) { setLogoUrl(data.logo_url); setSalvo(true); setTimeout(() => setSalvo(false), 2500); }
+    } finally {
+      setUploading(false);
+      setPreview(null);
+    }
+  }
+
+  function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  }
+
+  const exibida = preview ?? logoUrl;
+
+  return (
+    <div className="card p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <Settings size={15} className="text-brand-400" />
+        <h2 className="font-semibold text-white text-sm">Lanchonete</h2>
+      </div>
+
+      <p className="text-xs text-gray-500 mb-4">Logo exibida no cardápio público.</p>
+
+      <div className="flex items-center gap-4">
+        {/* Preview */}
+        <div className="w-20 h-20 rounded-xl bg-dark-700 border border-dark-500 flex items-center justify-center overflow-hidden shrink-0">
+          {exibida ? (
+            <Image src={exibida} alt="Logo" width={80} height={80} className="object-cover w-full h-full" unoptimized={!!preview} />
+          ) : (
+            <Upload size={22} className="text-gray-600" />
+          )}
+        </div>
+
+        {/* Drop zone / botão */}
+        <div
+          onDrop={onDrop}
+          onDragOver={(e) => e.preventDefault()}
+          className="flex-1 border-2 border-dashed border-dark-500 rounded-xl p-4 text-center cursor-pointer hover:border-brand-500 transition-colors"
+          onClick={() => inputRef.current?.click()}
+        >
+          {uploading ? (
+            <Loader2 size={18} className="animate-spin text-brand-400 mx-auto" />
+          ) : salvo ? (
+            <span className="flex items-center justify-center gap-1.5 text-emerald-400 text-sm">
+              <Check size={14} /> Logo atualizada!
+            </span>
+          ) : (
+            <>
+              <p className="text-sm text-gray-400">Arraste ou clique para enviar</p>
+              <p className="text-xs text-gray-600 mt-0.5">PNG, JPG, WEBP · máx. 5 MB</p>
+            </>
+          )}
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={onInputChange}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ConfiguracoesPage() {
   const { data: session } = useSession();
   const role = session?.user?.role;
@@ -254,17 +347,7 @@ export default function ConfiguracoesPage() {
       </div>
 
       {/* Lanchonete — somente ADMIN */}
-      {role === "ADMIN" && (
-        <div className="card p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Settings size={15} className="text-brand-400" />
-            <h2 className="font-semibold text-white text-sm">Lanchonete</h2>
-          </div>
-          <p className="text-sm text-gray-500">
-            Edição dos dados da lanchonete estará disponível em breve.
-          </p>
-        </div>
-      )}
+      {role === "ADMIN" && <LogoSection />}
 
       {/* Delivery — somente ADMIN */}
       {role === "ADMIN" && <DeliverySection />}

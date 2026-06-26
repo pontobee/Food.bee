@@ -204,6 +204,23 @@ export default function CardapioPage() {
         </div>
       </header>
 
+      {/* Hero da loja */}
+      <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col items-center gap-3 border-b border-[#2d2d3d]">
+        {data.lanchonete.logo_url ? (
+          <Image
+            src={data.lanchonete.logo_url}
+            alt={data.lanchonete.nome}
+            width={96} height={96}
+            className="rounded-2xl object-cover shadow-lg"
+          />
+        ) : (
+          <div className="w-24 h-24 rounded-2xl bg-orange-500/20 flex items-center justify-center text-orange-400 font-bold text-4xl shadow-lg">
+            {data.lanchonete.nome[0]}
+          </div>
+        )}
+        <h1 className="text-xl font-bold text-white text-center">{data.lanchonete.nome}</h1>
+      </div>
+
       {/* Filtro de categorias */}
       {data.categorias.length > 0 && (
         <div
