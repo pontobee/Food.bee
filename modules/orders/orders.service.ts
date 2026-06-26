@@ -21,6 +21,7 @@ export interface CriarPedidoInput {
   itens?:            ItemInput[];
   forma_pagamento?:  string;
   origem?:           string;
+  cliente_id?:       string | null;
   observacao?:       string | null;
   tipo_entrega?:     string;
   taxa_entrega_id?:  string;
@@ -181,6 +182,7 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
     data: {
       lanchonete_id:   lid,
       usuario_id:      uid,
+      cliente_id:      input.cliente_id ?? null,
       numero_pedido:   numeroPedido,
       forma_pagamento: input.forma_pagamento as FormaPagamento,
       origem:          (input.origem as OrigemPedido) ?? "BALCAO",

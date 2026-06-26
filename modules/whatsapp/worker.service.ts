@@ -81,6 +81,7 @@ async function processarEvento(id: string): Promise<void> {
     const cliente  = await upsertCliente(ctx.lanchoneteId, telefone, parsed.pushName);
 
     // Salva mensagem recebida para histórico
+    // status LIDO = chegou ao servidor e foi lida pelo sistema
     await prisma.mensagemWhatsApp.upsert({
       where:  { id_mensagem_wpp: parsed.messageId },
       create: {
@@ -89,7 +90,7 @@ async function processarEvento(id: string): Promise<void> {
         numero_destino:  telefone,
         mensagem:        parsed.texto,
         tipo:            "CUSTOM",
-        status:          "ENVIADO",
+        status:          "LIDO",
         id_mensagem_wpp: parsed.messageId,
         enviado_em:      new Date(parsed.ts * 1000),
       },
@@ -118,9 +119,10 @@ async function processarEvento(id: string): Promise<void> {
       where: { id_mensagem_wpp: parsed.messageId },
       data:  { status: mapStatus(parsed.status) },
     });
+    // ctx pode ser null se a instância não estiver cadastrada — ainda marcamos como PROCESSADO
     await prisma.webhookEvento.update({
       where: { id },
-      data:  { status: "PROCESSADO", lanchonete_id: ctx.lanchoneteId, processado_em: new Date() },
+      data:  { status: "PROCESSADO", lanchonete_id: ctx?.lanchoneteId ?? null, processado_em: new Date() },
     });
   }
 }
@@ -133,7 +135,14 @@ async function marcarErro(id: string, msg: string, tentativas: number) {
   });
 }
 
+async function limparSessoesExpiradas() {
+  await prisma.sessaoWhatsApp.deleteMany({ where: { expira_em: { lt: new Date() } } });
+}
+
 export async function processarFila(): Promise<{ processados: number; erros: number }> {
+  // Aproveita cada tick do cron para limpar sessões expiradas
+  limparSessoesExpiradas().catch((e) => console.error("[worker] cleanup sessões:", e));
+
   const ids = await reivindicarLote();
   if (ids.length === 0) return { processados: 0, erros: 0 };
 

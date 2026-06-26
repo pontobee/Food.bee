@@ -292,15 +292,12 @@ export async function processarMensagemBot(
           itens:            dados.carrinho.map((i) => ({ produto_id: i.produto_id, quantidade: i.qtd })),
           forma_pagamento:  FORMAS[idx],
           origem:           "WHATSAPP",
+          cliente_id:       clienteId,
           tipo_entrega:     dados.tipo_entrega ?? "BALCAO",
           endereco_entrega: dados.endereco_entrega ?? null,
         },
         { lanchoneteId, usuarioId: usuario.id },
       );
-
-      if (clienteId) {
-        await prisma.pedido.update({ where: { id: pedido.id }, data: { cliente_id: clienteId } });
-      }
 
       const totalFmt = Number(pedido.total).toFixed(2).replace(".", ",");
       const linhasPedido = pedido.itens.map(
