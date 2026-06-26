@@ -133,6 +133,7 @@ model Lanchonete {
   assinatura       Assinatura?
   pix_config       PixConfig?
   whatsapp_config  WhatsAppConfig?
+  sessoes_whatsapp SessaoWhatsApp[]
   taxas_entrega    TaxaEntrega[]
   usuarios         Usuario[]
   clientes         Cliente[]
@@ -519,6 +520,29 @@ model WhatsAppConfig {
   lanchonete Lanchonete @relation(fields: [lanchonete_id], references: [id])
 
   @@map("whatsapp_configs")
+}
+
+// =============================================================================
+// SESSAO_WHATSAPP — estado da conversa do bot por cliente
+// estado: MENU | CARRINHO | TIPO_ENTREGA | ENDERECO | PAGAMENTO
+// dados:  JSON com carrinho, tipo_entrega, endereco_entrega, menu_map
+// Expira após inatividade — expirada é tratada como sessão nova.
+// =============================================================================
+
+model SessaoWhatsApp {
+  id            String   @id @default(uuid()) @db.Uuid
+  lanchonete_id String   @db.Uuid
+  telefone      String   @db.VarChar(20)
+  estado        String   @db.VarChar(30)
+  dados         Json     @default("{}")
+  expira_em     DateTime @db.Timestamptz(3)
+  atualizado_em DateTime @updatedAt @db.Timestamptz(3)
+
+  lanchonete Lanchonete @relation(fields: [lanchonete_id], references: [id])
+
+  @@unique([lanchonete_id, telefone])
+  @@index([expira_em])
+  @@map("sessoes_whatsapp")
 }
 
 // =============================================================================

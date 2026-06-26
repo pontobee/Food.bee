@@ -1,11 +1,12 @@
-import { prisma } from "@/lib/prisma";
+import { prisma }               from "@/lib/prisma";
+import { type EvolutionConfig }  from "@/lib/evolution";
 import { parsePayload, cleanJid, mapStatus } from "./payload";
+import { processarMensagemBot }  from "./bot.service";
 
 const BATCH    = 10;
 const MAX_TENT = 3;
 
-// Atomicamente reivindica um lote de eventos PENDENTE usando SKIP LOCKED
-// para suportar múltiplos workers sem duplicação.
+// Atomicamente reivindica um lote de eventos PENDENTE com SKIP LOCKED.
 async function reivindicarLote(): Promise<string[]> {
   const rows = await prisma.$queryRaw<{ id: string }[]>`
     UPDATE webhook_eventos
@@ -23,19 +24,31 @@ async function reivindicarLote(): Promise<string[]> {
   return rows.map((r) => r.id);
 }
 
-async function resolverLanchonete(instance: string): Promise<string | null> {
-  const cfg = await prisma.whatsAppConfig.findFirst({
-    where:  { instance_nome: instance },
-    select: { lanchonete_id: true },
+interface LanchoneteCtx {
+  lanchoneteId: string;
+  cfg:          EvolutionConfig;
+}
+
+async function resolverLanchonete(instance: string): Promise<LanchoneteCtx | null> {
+  const config = await prisma.whatsAppConfig.findFirst({
+    where: { instance_nome: instance },
   });
-  return cfg?.lanchonete_id ?? null;
+  if (!config) return null;
+  return {
+    lanchoneteId: config.lanchonete_id,
+    cfg: {
+      url:      config.evolution_url,
+      apiKey:   config.evolution_api_key,
+      instance: config.instance_nome,
+    },
+  };
 }
 
 async function upsertCliente(lanchoneteId: string, telefone: string, nome: string) {
   return prisma.cliente.upsert({
     where:  { lanchonete_id_telefone: { lanchonete_id: lanchoneteId, telefone } },
     create: { lanchonete_id: lanchoneteId, telefone, nome },
-    update: { nome },             // atualiza nome caso mude no WhatsApp
+    update: { nome },
     select: { id: true },
   });
 }
@@ -54,9 +67,8 @@ async function processarEvento(id: string): Promise<void> {
     return;
   }
 
-  const lanchoneteId = await resolverLanchonete(parsed.instance);
-  if (!lanchoneteId) {
-    // instância não reconhecida — ignora sem punir (pode ser config desatualizada)
+  const ctx = await resolverLanchonete(parsed.instance);
+  if (!ctx) {
     await prisma.webhookEvento.update({
       where: { id },
       data:  { status: "IGNORADO", processado_em: new Date() },
@@ -66,13 +78,13 @@ async function processarEvento(id: string): Promise<void> {
 
   if (parsed.type === "message_in") {
     const telefone = cleanJid(parsed.remoteJid);
-    const cliente  = await upsertCliente(lanchoneteId, telefone, parsed.pushName);
+    const cliente  = await upsertCliente(ctx.lanchoneteId, telefone, parsed.pushName);
 
-    // Salva a mensagem recebida para histórico (tipo CUSTOM = entrada genérica)
+    // Salva mensagem recebida para histórico
     await prisma.mensagemWhatsApp.upsert({
       where:  { id_mensagem_wpp: parsed.messageId },
       create: {
-        lanchonete_id:   lanchoneteId,
+        lanchonete_id:   ctx.lanchoneteId,
         cliente_id:      cliente.id,
         numero_destino:  telefone,
         mensagem:        parsed.texto,
@@ -81,26 +93,34 @@ async function processarEvento(id: string): Promise<void> {
         id_mensagem_wpp: parsed.messageId,
         enviado_em:      new Date(parsed.ts * 1000),
       },
-      update: {},  // idempotência: não sobrescreve se já existe
+      update: {},
     });
+
+    // Processa o bot de pedidos
+    await processarMensagemBot(
+      ctx.lanchoneteId,
+      cliente.id,
+      telefone,
+      parsed.pushName,
+      parsed.texto,
+      ctx.cfg,
+    );
 
     await prisma.webhookEvento.update({
       where: { id },
-      data:  { status: "PROCESSADO", lanchonete_id: lanchoneteId, processado_em: new Date() },
+      data:  { status: "PROCESSADO", lanchonete_id: ctx.lanchoneteId, processado_em: new Date() },
     });
     return;
   }
 
   if (parsed.type === "message_update") {
-    const novoStatus = mapStatus(parsed.status);
     await prisma.mensagemWhatsApp.updateMany({
       where: { id_mensagem_wpp: parsed.messageId },
-      data:  { status: novoStatus },
+      data:  { status: mapStatus(parsed.status) },
     });
-
     await prisma.webhookEvento.update({
       where: { id },
-      data:  { status: "PROCESSADO", lanchonete_id: lanchoneteId, processado_em: new Date() },
+      data:  { status: "PROCESSADO", lanchonete_id: ctx.lanchoneteId, processado_em: new Date() },
     });
   }
 }
