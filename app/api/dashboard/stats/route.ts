@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
-import { auth }   from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { auth }       from "@/auth";
+import { authGuard }  from "@/lib/auth-guards";
+import { prisma }     from "@/lib/prisma";
 
 export async function GET() {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const guard = authGuard(session);
+  if (guard) return guard;
 
-  const lid       = session.user.lanchonete_id;
+  const lid       = session!.user.lanchonete_id;
   const hoje      = new Date(); hoje.setHours(0, 0, 0, 0);
 
   const [pedidosHoje, estoqueAtivo] = await Promise.all([

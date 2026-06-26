@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { adminGuard } from "@/lib/auth-guards";
 import {
   listarMembros,
   convidarMembro,
@@ -10,22 +11,18 @@ import { TeamValidationError, EmailEmUsoError } from "@/modules/team/team.errors
 // GET /api/equipe — lista os membros da lanchonete (somente ADMIN).
 export async function GET() {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const guard = adminGuard(session);
+  if (guard) return guard;
 
-  const membros = await listarMembros(session.user.lanchonete_id);
+  const membros = await listarMembros(session!.user.lanchonete_id);
   return NextResponse.json(membros);
 }
 
 // POST /api/equipe — convida/cria um novo membro (somente ADMIN).
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const guard = adminGuard(session);
+  if (guard) return guard;
 
   let body: ConvidarMembroInput;
   try {
@@ -38,7 +35,7 @@ export async function POST(req: NextRequest) {
     // O novo membro sempre nasce na MESMA lanchonete do admin logado.
     // O lanchonete_id vem da sessão, nunca do body — assim um admin não
     // consegue criar usuários em outro tenant.
-    const membro = await convidarMembro(body, session.user.lanchonete_id);
+    const membro = await convidarMembro(body, session!.user.lanchonete_id);
     return NextResponse.json(membro, { status: 201 });
   } catch (err) {
     if (err instanceof TeamValidationError) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z }    from "zod";
 import { auth } from "@/auth";
+import { authGuard } from "@/lib/auth-guards";
 import { updateOrderStatus } from "@/modules/orders/orders.service";
 import { OrderNotFoundError, OrderValidationError } from "@/modules/orders/orders.errors";
 
@@ -15,7 +16,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const guard = authGuard(session);
+  if (guard) return guard;
 
   let raw: unknown;
   try {
@@ -33,8 +35,8 @@ export async function PATCH(
 
   try {
     const atualizado = await updateOrderStatus(id, parsed.data, {
-      lanchoneteId: session.user.lanchonete_id,
-      usuarioId:    session.user.id!,
+      lanchoneteId: session!.user.lanchonete_id,
+      usuarioId:    session!.user.id!,
     });
     return NextResponse.json(atualizado);
   } catch (err) {

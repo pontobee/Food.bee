@@ -1,16 +1,15 @@
 import { NextResponse } from "next/server";
-import { auth }   from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { auth }        from "@/auth";
+import { adminGuard }  from "@/lib/auth-guards";
+import { prisma }      from "@/lib/prisma";
 
 // GET /api/financeiro/resumo — resumo financeiro do mês/dia (somente ADMIN)
 export async function GET() {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const guard = adminGuard(session);
+  if (guard) return guard;
 
-  const lid = session.user.lanchonete_id;
+  const lid = session!.user.lanchonete_id;
 
   const inicioDia = new Date();
   inicioDia.setHours(0, 0, 0, 0);
