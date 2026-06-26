@@ -43,3 +43,13 @@ export async function desconectar(cfg: EvolutionConfig) {
   if (!res.ok) throw new Error(`Evolution logout: ${res.status}`);
   return res.json();
 }
+
+export async function enviarMensagem(cfg: EvolutionConfig, numero: string, texto: string) {
+  const res = await fetch(`${cfg.url}/message/sendText/${cfg.instance}`, {
+    method:  "POST",
+    headers: headers(cfg.apiKey),
+    body:    JSON.stringify({ number: numero, text: texto }),
+  });
+  if (!res.ok) throw new Error(`Evolution sendText: ${res.status}`);
+  return res.json() as Promise<{ key?: { id?: string } }>;
+}
