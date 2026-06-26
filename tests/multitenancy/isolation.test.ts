@@ -9,6 +9,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Prisma } from "@prisma/client";
 
+// TipoMovimentacaoEstoque não está no client gerado enquanto a migration
+// add_movimentacao_estoque não for aplicada e `prisma generate` rodado.
+// O mock abaixo supre o valor esperado apenas no contexto dos testes.
+vi.mock("@prisma/client", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@prisma/client")>();
+  return {
+    ...real,
+    TipoMovimentacaoEstoque: { ENTRADA: "ENTRADA", SAIDA: "SAIDA" },
+  };
+});
+
 // ── Mock do módulo Prisma ──────────────────────────────────────
 // Intercepta todas as chamadas ao banco para inspecionar os argumentos.
 vi.mock("@/lib/prisma", () => ({
@@ -27,14 +38,18 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: vi.fn(),
       create:    vi.fn(),
     },
-    $queryRaw: vi.fn(),
+    movimentacaoEstoque: { findMany: vi.fn() },
+    $queryRaw:     vi.fn(),
+    $transaction:  vi.fn(),
   },
 }));
 
 import { prisma } from "@/lib/prisma";
 import { getTodaysOrders, createOrder, updateOrderStatus } from "@/modules/orders/orders.service";
 import { listarMembros, convidarMembro } from "@/modules/team/team.service";
+import { movimentarEstoque, getMovimentacoes } from "@/modules/stock/stock.service";
 import { OrderValidationError, OrderNotFoundError } from "@/modules/orders/orders.errors";
+import { StockNotFoundError, StockValidationError } from "@/modules/stock/stock.errors";
 
 const TENANT_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const TENANT_B = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
@@ -178,5 +193,92 @@ describe("Equipe — isolamento de tenant", () => {
 
     const findCall = vi.mocked(prisma.usuario.findUnique).mock.calls[0][0];
     expect(findCall?.where?.lanchonete_id_email?.lanchonete_id).toBe(TENANT_A);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+describe("Estoque — isolamento de tenant", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("getMovimentacoes sempre filtra pelo lanchonete_id da sessão", async () => {
+    vi.mocked(prisma.movimentacaoEstoque.findMany).mockResolvedValue([]);
+
+    await getMovimentacoes(TENANT_A);
+
+    const call = vi.mocked(prisma.movimentacaoEstoque.findMany).mock.calls[0][0];
+    expect(call?.where?.lanchonete_id).toBe(TENANT_A);
+  });
+
+  it("movimentarEstoque rejeita produto que não pertence ao tenant", async () => {
+    // tx.produto.findFirst retorna null → produto não existe para TENANT_A
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: (tx: unknown) => unknown) => {
+      const tx = {
+        produto:             { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() },
+        movimentacaoEstoque: { create:    vi.fn() },
+      };
+      return fn(tx);
+    });
+
+    await expect(
+      movimentarEstoque(
+        { produto_id: "prod-de-tenant-b", tipo: "ENTRADA", quantidade: 1 },
+        { lanchoneteId: TENANT_A, usuarioId: USER_A }
+      )
+    ).rejects.toThrow(StockNotFoundError);
+  });
+
+  it("movimentarEstoque não executa update quando produto não pertence ao tenant", async () => {
+    const mockUpdate = vi.fn();
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: (tx: unknown) => unknown) => {
+      const tx = {
+        produto:             { findFirst: vi.fn().mockResolvedValue(null), update: mockUpdate },
+        movimentacaoEstoque: { create:    vi.fn() },
+      };
+      return fn(tx);
+    });
+
+    await expect(
+      movimentarEstoque(
+        { produto_id: "prod-alheio", tipo: "SAIDA", quantidade: 1 },
+        { lanchoneteId: TENANT_A, usuarioId: USER_A }
+      )
+    ).rejects.toThrow(StockNotFoundError);
+
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("movimentarEstoque persiste a movimentação com lanchonete_id do contexto", async () => {
+    const mockCreate = vi.fn().mockResolvedValue({ id: "mov-1", lanchonete_id: TENANT_A });
+
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: (tx: unknown) => unknown) => {
+      const tx = {
+        produto: {
+          findFirst: vi.fn().mockResolvedValue({ id: "prod-1", estoque_atual: 10 }),
+          update:    vi.fn().mockResolvedValue({ id: "prod-1", estoque_atual: 11 }),
+        },
+        movimentacaoEstoque: { create: mockCreate },
+      };
+      return fn(tx);
+    });
+
+    await movimentarEstoque(
+      { produto_id: "prod-1", tipo: "ENTRADA", quantidade: 1 },
+      { lanchoneteId: TENANT_A, usuarioId: USER_A }
+    );
+
+    const createCall = mockCreate.mock.calls[0][0];
+    expect(createCall?.data?.lanchonete_id).toBe(TENANT_A);
+    expect(createCall?.data?.lanchonete_id).not.toBe(TENANT_B);
+  });
+
+  it("movimentarEstoque rejeita tipo inválido antes de acessar o banco", async () => {
+    await expect(
+      movimentarEstoque(
+        { produto_id: "prod-1", tipo: "INVALIDO", quantidade: 1 },
+        { lanchoneteId: TENANT_A, usuarioId: USER_A }
+      )
+    ).rejects.toThrow(StockValidationError);
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });
