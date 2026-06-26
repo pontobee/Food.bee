@@ -6,7 +6,11 @@ import { useRouter }  from "next/navigation";
 import { useEffect }  from "react";
 import { TrendingUp, TrendingDown, DollarSign } from "lucide-react";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const fetcher = (url: string) =>
+  fetch(url).then((r) => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  });
 
 interface ResumoFinanceiro {
   receita_mes:   number;
@@ -26,13 +30,15 @@ export default function FinanceiroPage() {
     }
   }, [session, router]);
 
-  const { data } = useSWR<ResumoFinanceiro>(
+  const { data, error, isLoading } = useSWR<ResumoFinanceiro>(
     session?.user.role === "ADMIN" ? "/api/financeiro/resumo" : null,
     fetcher,
     { refreshInterval: 60_000 }
   );
 
-  if (!data) return <p className="text-gray-600 text-sm">Carregando…</p>;
+  if (isLoading) return <p className="text-gray-600 text-sm">Carregando…</p>;
+  if (error)     return <p className="text-red-400 text-sm">Erro ao carregar dados financeiros. Tente recarregar a página.</p>;
+  if (!data)     return null;
 
   const cards = [
     { label: "Receita do mês",  value: data.receita_mes,  icon: TrendingUp,   cor: "bg-emerald-500/15 text-emerald-400" },

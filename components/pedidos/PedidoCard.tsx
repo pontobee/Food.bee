@@ -57,6 +57,7 @@ interface Props {
 export function PedidoCard({ pedido, onMutate }: Props) {
   const [minutos, setMinutos]     = useState(() => minutosDesde(pedido.criado_em));
   const [loading, setLoading]     = useState<StatusPedido | null>(null);
+  const [erro,    setErro]        = useState<string | null>(null);
 
   // Atualiza o timer a cada minuto
   useEffect(() => {
@@ -66,9 +67,12 @@ export function PedidoCard({ pedido, onMutate }: Props) {
 
   const avancar = useCallback(async (status: StatusPedido) => {
     setLoading(status);
+    setErro(null);
     try {
       await atualizarStatus(pedido.id, status);
       onMutate();
+    } catch {
+      setErro("Falha ao atualizar pedido. Tente novamente.");
     } finally {
       setLoading(null);
     }
@@ -142,6 +146,11 @@ export function PedidoCard({ pedido, onMutate }: Props) {
           R$ {Number(pedido.total).toFixed(2).replace(".", ",")}
         </span>
       </div>
+
+      {/* Erro de atualização */}
+      {erro && (
+        <p className="text-xs text-red-400 mt-2 text-center">{erro}</p>
+      )}
 
       {/* Ações */}
       {(proximo || pedido.status === "AGUARDANDO" || pedido.status === "EM_PREPARO" || pedido.status === "PRONTO") && (

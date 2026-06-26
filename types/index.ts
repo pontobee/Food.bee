@@ -76,10 +76,11 @@ export interface MembroDTO {
 }
 
 export interface StatsDTO {
-  pedidos_hoje:     number;
-  faturamento_hoje: number;
-  ticket_medio:     number;
-  estoque_critico:  number;
+  pedidos_hoje:       number;
+  faturamento_hoje:   number;
+  ticket_medio:       number;
+  estoque_critico:    number;
+  webhooks_pendentes: number;
 }
 
 export interface ChartDataPoint {

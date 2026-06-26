@@ -24,7 +24,16 @@ export default function LoginPage() {
     });
 
     if (res?.error) {
-      setError("E-mail ou senha incorretos.");
+      if (res.code === "rate_limited") {
+        const wait = parseInt(res.error ?? "0", 10);
+        setError(
+          wait > 0
+            ? `Muitas tentativas. Aguarde ${Math.ceil(wait / 60)} min para tentar novamente.`
+            : "Muitas tentativas. Tente novamente em alguns minutos."
+        );
+      } else {
+        setError("E-mail ou senha incorretos.");
+      }
       setLoading(false);
       return;
     }
