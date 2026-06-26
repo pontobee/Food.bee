@@ -1,9 +1,13 @@
-import NextAuth      from "next-auth";
-import Credentials   from "next-auth/providers/credentials";
-import bcrypt        from "bcryptjs";
+import NextAuth, { CredentialsSignin } from "next-auth";
+import Credentials                     from "next-auth/providers/credentials";
+import bcrypt                          from "bcryptjs";
 import { authConfig }    from "./auth.config";
 import { prisma }        from "@/lib/prisma";
 import { checkRateLimit, resetRateLimit } from "@/lib/rate-limit";
+
+class RateLimitError extends CredentialsSignin {
+  code = "rate_limited";
+}
 
 // Config completa (Node.js runtime only — nunca importada pelo middleware)
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -27,9 +31,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const emailKey = `login:email:${credentials.email}`;
         const ipKey    = `login:ip:${ip}`;
 
-        const { allowed: emailOk } = checkRateLimit(emailKey);
-        const { allowed: ipOk }    = checkRateLimit(ipKey);
-        if (!emailOk || !ipOk) return null;
+        const { allowed: emailOk, retryAfterSeconds: emailWait } = checkRateLimit(emailKey);
+        const { allowed: ipOk,    retryAfterSeconds: ipWait    } = checkRateLimit(ipKey);
+        if (!emailOk || !ipOk) throw new RateLimitError(String(Math.max(emailWait, ipWait)));
 
         const usuario = await prisma.usuario.findFirst({
           where: { email: credentials.email as string, inativo_em: null },
