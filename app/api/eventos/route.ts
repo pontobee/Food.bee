@@ -7,9 +7,27 @@ import { logger }      from "@/lib/logger";
 // Webhook da Evolution API — payload é um objeto livre, mas deve ser um objeto
 const webhookSchema = z.record(z.string(), z.unknown());
 
+// Valida o segredo de origem do webhook.
+// Se EVOLUTION_WEBHOOK_SECRET estiver definido, o header Authorization: Bearer <secret>
+// precisa coincidir. Se não estiver definido, aceita mas emite aviso.
+function isAuthorized(req: NextRequest): boolean {
+  const secret = process.env.EVOLUTION_WEBHOOK_SECRET;
+  if (!secret) {
+    logger.warn("webhook", "EVOLUTION_WEBHOOK_SECRET não configurado — endpoint desprotegido");
+    return true;
+  }
+  const authHeader = req.headers.get("authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+  return token === secret;
+}
+
 // POST /api/eventos — receptor de webhooks da Evolution API (WhatsApp)
 // Retorna 200 imediatamente (fire-and-forget). Worker processa a fila.
 export async function POST(req: NextRequest) {
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+
   let raw: unknown;
   try {
     raw = await req.json();
