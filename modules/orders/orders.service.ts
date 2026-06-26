@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma, FormaPagamento, OrigemPedido, StatusPedido } from "@prisma/client";
 import { OrderValidationError, OrderNotFoundError } from "@/modules/orders/orders.errors";
 import { startOfDayBRT } from "@/lib/timezone";
+import type { TenantContext } from "@/modules/shared/tenant.types";
 
 const FORMAS_PAGAMENTO = new Set<string>(Object.values(FormaPagamento));
 const ORIGENS_PEDIDO   = new Set<string>(Object.values(OrigemPedido));
@@ -30,11 +31,6 @@ export interface AtualizarStatusInput {
   motivo_cancelamento?: string | null;
 }
 
-/** Contexto do tenant autenticado — toda operação é isolada por lanchonete. */
-interface TenantContext {
-  lanchoneteId: string;
-  usuarioId: string;
-}
 
 // ── Leitura: pedidos do dia do tenant ──────────────────────────
 export function getTodaysOrders(lanchoneteId: string) {

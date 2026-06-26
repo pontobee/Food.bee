@@ -5,6 +5,7 @@ import {
   StockNotFoundError,
   EstoqueInsuficienteError,
 } from "@/modules/stock/stock.errors";
+import type { TenantContext } from "@/modules/shared/tenant.types";
 
 const TIPOS_MOVIMENTACAO = new Set<string>(Object.values(TipoMovimentacaoEstoque));
 
@@ -16,11 +17,6 @@ export interface MovimentarEstoqueInput {
   motivo?: string | null;
 }
 
-/** Contexto do tenant autenticado — toda operação é isolada por lanchonete. */
-interface TenantContext {
-  lanchoneteId: string;
-  usuarioId: string;
-}
 
 // ── Leitura: histórico recente de movimentações do tenant ──────
 export function getMovimentacoes(lanchoneteId: string, limite = 30) {
