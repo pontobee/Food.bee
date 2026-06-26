@@ -4,6 +4,7 @@ import { OrderValidationError, OrderNotFoundError } from "@/modules/orders/order
 
 const FORMAS_PAGAMENTO = new Set<string>(Object.values(FormaPagamento));
 const ORIGENS_PEDIDO   = new Set<string>(Object.values(OrigemPedido));
+const STATUSES_PEDIDO  = new Set<string>(Object.values(StatusPedido));
 
 // ── Tipos de entrada (DTOs vindos da API) ──────────────────────
 interface ItemAdicionalInput {
@@ -184,6 +185,10 @@ export async function updateOrderStatus(
   ctx: TenantContext
 ) {
   const { lanchoneteId: lid, usuarioId: uid } = ctx;
+
+  if (!input.status || !STATUSES_PEDIDO.has(input.status)) {
+    throw new OrderValidationError("status inválido");
+  }
 
   const pedido = await prisma.pedido.findFirst({
     where: { id, lanchonete_id: lid, inativo_em: null },
