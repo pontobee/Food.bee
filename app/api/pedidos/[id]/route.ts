@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { updateOrderStatus } from "@/modules/orders/orders.service";
 import { OrderNotFoundError } from "@/modules/orders/orders.errors";
+import { notificarCliente } from "@/modules/whatsapp/notificacoes.service";
 
 // PATCH /api/pedidos/[id] — atualiza status do pedido
 export async function PATCH(
@@ -19,6 +20,12 @@ export async function PATCH(
       lanchoneteId: session.user.lanchonete_id,
       usuarioId:    session.user.id!,
     });
+
+    // Fire-and-forget: falha de WhatsApp não deve travar a resposta
+    if (body.status) {
+      notificarCliente(id, session.user.lanchonete_id, body.status).catch(console.error);
+    }
+
     return NextResponse.json(atualizado);
   } catch (err) {
     if (err instanceof OrderNotFoundError) {
