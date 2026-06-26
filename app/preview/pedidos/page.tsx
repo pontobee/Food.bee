@@ -14,7 +14,7 @@ const MOCK_PEDIDOS: PedidoDTO[] = [
     forma_pagamento: "PIX", origem: "BALCAO",
     subtotal: 52.8, desconto: 0, total: 52.8, troco: null,
     observacao: "Sem cebola no hamburguer",
-    criado_em: minus(3), atualizado_em: now,
+    criado_em: minus(3), atualizado_em: now, pago_em: null, tipo_entrega: "BALCAO" as const, taxa_entrega: null, endereco_entrega: null,
     cliente: { id: "c1", nome: "João Silva", telefone: "11999990001" },
     itens: [
       { id: "i1", produto_nome: "X-Bacon Duplo", produto_preco_unitario: 31.9, quantidade: 1, total: 31.9,
@@ -31,7 +31,7 @@ const MOCK_PEDIDOS: PedidoDTO[] = [
     forma_pagamento: "DINHEIRO", origem: "WHATSAPP",
     subtotal: 29.9, desconto: 0, total: 29.9, troco: 10.1,
     observacao: null,
-    criado_em: minus(6), atualizado_em: now,
+    criado_em: minus(6), atualizado_em: now, pago_em: null, tipo_entrega: "BALCAO" as const, taxa_entrega: null, endereco_entrega: null,
     cliente: null,
     itens: [
       { id: "i4", produto_nome: "X-Burguer Clássico", produto_preco_unitario: 22.9, quantidade: 1, total: 22.9,
@@ -44,7 +44,7 @@ const MOCK_PEDIDOS: PedidoDTO[] = [
     forma_pagamento: "CARTAO_DEBITO", origem: "BALCAO",
     subtotal: 44.5, desconto: 0, total: 44.5, troco: null,
     observacao: null,
-    criado_em: minus(18), atualizado_em: now,
+    criado_em: minus(18), atualizado_em: now, pago_em: null, tipo_entrega: "BALCAO" as const, taxa_entrega: null, endereco_entrega: null,
     cliente: { id: "c2", nome: "Maria Santos", telefone: "11999990002" },
     itens: [
       { id: "i6", produto_nome: "X-Bacon Duplo", produto_preco_unitario: 31.9, quantidade: 1, total: 31.9, adicionais: [] },
@@ -57,7 +57,7 @@ const MOCK_PEDIDOS: PedidoDTO[] = [
     forma_pagamento: "PIX", origem: "BALCAO",
     subtotal: 22.9, desconto: 0, total: 22.9, troco: null,
     observacao: "Ponto da carne: bem passado",
-    criado_em: minus(35), atualizado_em: now,
+    criado_em: minus(35), atualizado_em: now, pago_em: null, tipo_entrega: "BALCAO" as const, taxa_entrega: null, endereco_entrega: null,
     cliente: { id: "c3", nome: "Carlos Mendes", telefone: "11999990003" },
     itens: [
       { id: "i8", produto_nome: "X-Burguer Clássico", produto_preco_unitario: 22.9, quantidade: 1, total: 22.9,
@@ -69,7 +69,7 @@ const MOCK_PEDIDOS: PedidoDTO[] = [
     forma_pagamento: "CARTAO_CREDITO", origem: "BALCAO",
     subtotal: 67.2, desconto: 0, total: 67.2, troco: null,
     observacao: null,
-    criado_em: minus(22), atualizado_em: now,
+    criado_em: minus(22), atualizado_em: now, pago_em: null, tipo_entrega: "BALCAO" as const, taxa_entrega: null, endereco_entrega: null,
     cliente: { id: "c4", nome: "Ana Lima", telefone: "11999990004" },
     itens: [
       { id: "i9",  produto_nome: "X-Bacon Duplo",  produto_preco_unitario: 31.9, quantidade: 2, total: 63.8, adicionais: [] },
@@ -81,7 +81,7 @@ const MOCK_PEDIDOS: PedidoDTO[] = [
     forma_pagamento: "PIX", origem: "BALCAO",
     subtotal: 38.9, desconto: 0, total: 38.9, troco: null,
     observacao: null,
-    criado_em: minus(45), atualizado_em: now,
+    criado_em: minus(45), atualizado_em: now, pago_em: null, tipo_entrega: "BALCAO" as const, taxa_entrega: null, endereco_entrega: null,
     cliente: { id: "c5", nome: "Pedro Costa", telefone: "11999990005" },
     itens: [
       { id: "i11", produto_nome: "X-Burguer Clássico", produto_preco_unitario: 22.9, quantidade: 1, total: 22.9, adicionais: [] },
@@ -94,7 +94,7 @@ const MOCK_PEDIDOS: PedidoDTO[] = [
     forma_pagamento: "DINHEIRO", origem: "WHATSAPP",
     subtotal: 22.9, desconto: 0, total: 22.9, troco: null,
     observacao: null,
-    criado_em: minus(60), atualizado_em: now,
+    criado_em: minus(60), atualizado_em: now, pago_em: null, tipo_entrega: "BALCAO" as const, taxa_entrega: null, endereco_entrega: null,
     cliente: null,
     itens: [
       { id: "i14", produto_nome: "X-Burguer Clássico", produto_preco_unitario: 22.9, quantidade: 1, total: 22.9, adicionais: [] },
@@ -109,7 +109,6 @@ const FOP_BADGE: Record<string, { label: string; cor: string; icon: React.ReactN
   DINHEIRO:       { label: "Dinheiro",cor: "bg-blue-500/15 text-blue-400",       icon: <Banknote  size={12}/> },
   CARTAO_DEBITO:  { label: "Débito",  cor: "bg-purple-500/15 text-purple-400",   icon: <CreditCard size={12}/> },
   CARTAO_CREDITO: { label: "Crédito", cor: "bg-purple-500/15 text-purple-400",   icon: <CreditCard size={12}/> },
-  FIADO:          { label: "Fiado",   cor: "bg-gray-500/15 text-gray-400",       icon: <Clock     size={12}/> },
 };
 
 function Timer({ criadoEm, status }: { criadoEm: string; status: StatusPedido }) {

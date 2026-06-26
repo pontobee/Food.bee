@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Plus, Minus, Search } from "lucide-react";
-import type { ProdutoDTO, FormaPagamento, ItemAdicionalDTO } from "@/types";
+import { X, Plus, Minus, Search, Bike, Store } from "lucide-react";
+import type { ProdutoDTO, FormaPagamento, ItemAdicionalDTO, TaxaEntregaDTO } from "@/types";
 
 interface LinhaCarrinho {
   produto:     ProdutoDTO;
@@ -20,22 +20,26 @@ const FORMA_OPTS: { value: FormaPagamento; label: string }[] = [
   { value: "PIX",            label: "PIX"        },
   { value: "CARTAO_DEBITO",  label: "Débito"     },
   { value: "CARTAO_CREDITO", label: "Crédito"    },
-  { value: "FIADO",          label: "Fiado"      },
 ];
 
 export function NovoPedidoModal({ onClose, onSalvo }: Props) {
-  const [produtos,    setProdutos]    = useState<ProdutoDTO[]>([]);
-  const [busca,       setBusca]       = useState("");
-  const [carrinho,    setCarrinho]    = useState<LinhaCarrinho[]>([]);
-  const [forma,       setForma]       = useState<FormaPagamento>("PIX");
-  const [obs,         setObs]         = useState("");
-  const [clienteNome, setClienteNome] = useState("");
-  const [salvando,    setSalvando]    = useState(false);
+  const [produtos,     setProdutos]    = useState<ProdutoDTO[]>([]);
+  const [taxas,        setTaxas]       = useState<TaxaEntregaDTO[]>([]);
+  const [busca,        setBusca]       = useState("");
+  const [carrinho,     setCarrinho]    = useState<LinhaCarrinho[]>([]);
+  const [forma,        setForma]       = useState<FormaPagamento>("PIX");
+  const [obs,          setObs]         = useState("");
+  const [clienteNome,  setClienteNome] = useState("");
+  const [tipoEntrega,  setTipoEntrega] = useState<"BALCAO" | "DELIVERY">("BALCAO");
+  const [taxaId,       setTaxaId]      = useState<string>("");
+  const [endereco,     setEndereco]    = useState("");
+  const [salvando,     setSalvando]    = useState(false);
 
   useEffect(() => {
-    fetch("/api/produtos")
-      .then((r) => r.json())
-      .then(setProdutos);
+    fetch("/api/produtos").then((r) => r.json()).then(setProdutos);
+    fetch("/api/delivery/taxas").then((r) => r.json()).then((d) => {
+      if (Array.isArray(d)) setTaxas(d);
+    });
   }, []);
 
   const produtosFiltrados = produtos.filter((p) =>
@@ -90,21 +94,27 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
     );
   }
 
-  const total = carrinho.reduce((acc, l) => {
+  const subtotal = carrinho.reduce((acc, l) => {
     const extras = l.adicionais
       .filter((a) => a.selecionado && a.tipo === "ADICIONAL")
       .reduce((s, a) => s + a.preco_extra, 0);
     return acc + (l.produto.preco_venda + extras) * l.quantidade;
   }, 0);
 
+  const taxaSelecionada = taxas.find((t) => t.id === taxaId) ?? null;
+  const total = subtotal + (tipoEntrega === "DELIVERY" && taxaSelecionada ? Number(taxaSelecionada.taxa) : 0);
+
   async function salvar() {
     if (carrinho.length === 0) return;
     setSalvando(true);
     try {
       const body = {
-        forma_pagamento: forma,
-        observacao:      obs || null,
-        cliente_nome:    clienteNome || null,
+        forma_pagamento:  forma,
+        observacao:       obs || null,
+        cliente_nome:     clienteNome || null,
+        tipo_entrega:     tipoEntrega,
+        taxa_entrega_id:  tipoEntrega === "DELIVERY" && taxaId ? taxaId : undefined,
+        endereco_entrega: tipoEntrega === "DELIVERY" ? endereco || null : null,
         itens: carrinho.map((l) => ({
           produto_id:    l.produto.id,
           produto_nome:  l.produto.nome,
@@ -256,6 +266,65 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
                            px-3 text-sm text-white placeholder:text-gray-600
                            focus:border-brand-500 focus:outline-none"
               />
+
+              {/* Tipo de entrega */}
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => setTipoEntrega("BALCAO")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 min-h-[36px] rounded-lg text-xs font-semibold border transition-colors ${
+                    tipoEntrega === "BALCAO"
+                      ? "bg-brand-500 border-brand-500 text-white"
+                      : "border-dark-500 text-gray-400 hover:text-white"
+                  }`}
+                >
+                  <Store size={12} /> Balcão
+                </button>
+                <button
+                  onClick={() => setTipoEntrega("DELIVERY")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 min-h-[36px] rounded-lg text-xs font-semibold border transition-colors ${
+                    tipoEntrega === "DELIVERY"
+                      ? "bg-brand-500 border-brand-500 text-white"
+                      : "border-dark-500 text-gray-400 hover:text-white"
+                  }`}
+                >
+                  <Bike size={12} /> Delivery
+                </button>
+              </div>
+
+              {/* Campos de delivery */}
+              {tipoEntrega === "DELIVERY" && (
+                <div className="space-y-1.5">
+                  {taxas.length > 0 ? (
+                    <select
+                      value={taxaId}
+                      onChange={(e) => setTaxaId(e.target.value)}
+                      className="w-full h-9 bg-dark-700 border border-dark-600 rounded-lg
+                                 px-3 text-sm text-white focus:border-brand-500 focus:outline-none"
+                    >
+                      <option value="">Selecione a zona de entrega</option>
+                      {taxas.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nome} — R$ {Number(t.taxa).toFixed(2).replace(".", ",")}
+                          {t.tempo_min ? ` (~${t.tempo_min}min)` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="text-xs text-amber-400 px-1">
+                      Nenhuma zona cadastrada em Configurações → Delivery
+                    </p>
+                  )}
+                  <input
+                    type="text"
+                    placeholder="Endereço de entrega *"
+                    value={endereco}
+                    onChange={(e) => setEndereco(e.target.value)}
+                    className="w-full h-9 bg-dark-700 border border-dark-600 rounded-lg
+                               px-3 text-sm text-white placeholder:text-gray-600
+                               focus:border-brand-500 focus:outline-none"
+                  />
+                </div>
+              )}
               <textarea
                 rows={2}
                 placeholder="Observações…"
@@ -285,12 +354,23 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-lg font-black text-white">
-                  R$ {total.toFixed(2).replace(".", ",")}
-                </span>
+                <div>
+                  <span className="text-lg font-black text-white">
+                    R$ {total.toFixed(2).replace(".", ",")}
+                  </span>
+                  {tipoEntrega === "DELIVERY" && taxaSelecionada && (
+                    <p className="text-xs text-gray-500">
+                      Entrega: R$ {Number(taxaSelecionada.taxa).toFixed(2).replace(".", ",")}
+                    </p>
+                  )}
+                </div>
                 <button
                   onClick={salvar}
-                  disabled={salvando || carrinho.length === 0}
+                  disabled={
+                    salvando ||
+                    carrinho.length === 0 ||
+                    (tipoEntrega === "DELIVERY" && !endereco.trim())
+                  }
                   className="btn-primary disabled:opacity-50"
                 >
                   {salvando ? "Salvando…" : "Confirmar pedido"}

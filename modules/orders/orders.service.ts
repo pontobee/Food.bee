@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { Prisma, FormaPagamento, OrigemPedido, StatusPedido } from "@prisma/client";
+import { Prisma, FormaPagamento, OrigemPedido, StatusPedido, TipoEntrega } from "@prisma/client";
 import { OrderValidationError, OrderNotFoundError } from "@/modules/orders/orders.errors";
 
 const FORMAS_PAGAMENTO = new Set<string>(Object.values(FormaPagamento));
 const ORIGENS_PEDIDO   = new Set<string>(Object.values(OrigemPedido));
+const TIPOS_ENTREGA    = new Set<string>(Object.values(TipoEntrega));
 
 // ── Tipos de entrada (DTOs vindos da API) ──────────────────────
 interface ItemAdicionalInput {
@@ -17,10 +18,13 @@ interface ItemInput {
 }
 
 export interface CriarPedidoInput {
-  itens?: ItemInput[];
-  forma_pagamento?: string;
-  origem?: string;
-  observacao?: string | null;
+  itens?:            ItemInput[];
+  forma_pagamento?:  string;
+  origem?:           string;
+  observacao?:       string | null;
+  tipo_entrega?:     string;
+  taxa_entrega_id?:  string;
+  endereco_entrega?: string | null;
 }
 
 export interface AtualizarStatusInput {
@@ -74,6 +78,12 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
   }
   if (input.origem !== undefined && !ORIGENS_PEDIDO.has(input.origem)) {
     throw new OrderValidationError("origem inválida");
+  }
+  if (input.tipo_entrega !== undefined && !TIPOS_ENTREGA.has(input.tipo_entrega)) {
+    throw new OrderValidationError("tipo_entrega inválido");
+  }
+  if (input.tipo_entrega === "DELIVERY" && !input.endereco_entrega?.trim()) {
+    throw new OrderValidationError("endereço de entrega obrigatório para delivery");
   }
   for (const item of itensInput) {
     if (!item.produto_id || !Number.isInteger(item.quantidade) || (item.quantidade as number) < 1) {
@@ -145,13 +155,28 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
     });
   }
 
-  // 4. Número sequencial por tenant via função PG
+  // 4. Resolve taxa de entrega (server-side — nunca confia no valor do cliente)
+  let taxaEntregaValor = new Prisma.Decimal(0);
+  let taxaEntregaId: string | undefined;
+
+  if (input.tipo_entrega === "DELIVERY" && input.taxa_entrega_id) {
+    const zona = await prisma.taxaEntrega.findFirst({
+      where: { id: input.taxa_entrega_id, lanchonete_id: lid, ativa: true },
+    });
+    if (!zona) throw new OrderValidationError("Zona de entrega não encontrada");
+    taxaEntregaValor = zona.taxa;
+    taxaEntregaId    = zona.id;
+  }
+
+  const total = subtotal.add(taxaEntregaValor);
+
+  // 5. Número sequencial por tenant via função PG
   const seqResult = await prisma.$queryRaw<{ next_numero_pedido: number }[]>`
     SELECT next_numero_pedido(${lid}::uuid) AS next_numero_pedido
   `;
   const numeroPedido = seqResult[0].next_numero_pedido;
 
-  // 5. Persistência
+  // 6. Persistência
   return prisma.pedido.create({
     data: {
       lanchonete_id:   lid,
@@ -160,9 +185,13 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
       forma_pagamento: input.forma_pagamento as FormaPagamento,
       origem:          (input.origem as OrigemPedido) ?? "BALCAO",
       observacao:      input.observacao ?? null,
+      tipo_entrega:    (input.tipo_entrega as TipoEntrega) ?? "BALCAO",
+      taxa_entrega_id: taxaEntregaId ?? null,
+      taxa_entrega:    taxaEntregaValor.gt(0) ? taxaEntregaValor : null,
+      endereco_entrega: input.endereco_entrega ?? null,
       subtotal,
       desconto:        0,
-      total:           subtotal,
+      total,
       itens: { create: itensData },
     },
     include: {

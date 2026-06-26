@@ -17,6 +17,9 @@ export const authConfig = {
         pathname.startsWith("/login") ||
         pathname.startsWith("/api/auth") ||
         pathname.startsWith("/api/eventos") ||
+        pathname.startsWith("/api/public/") ||
+        pathname.startsWith("/api/webhooks/") ||
+        pathname.startsWith("/cardapio/") ||
         pathname.startsWith("/preview");
 
       if (isPublic) return true;

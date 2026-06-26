@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  Banknote, CreditCard, QrCode, Clock, ChevronRight, X,
+  Banknote, CreditCard, QrCode, ChevronRight, X, CheckCircle2, Bike,
 } from "lucide-react";
 import type { PedidoDTO, FormaPagamento, StatusPedido } from "@/types";
-import { atualizarStatus } from "@/hooks/usePedidos";
+import { atualizarStatus }  from "@/hooks/usePedidos";
+import { ModalPix }         from "@/components/pedidos/ModalPix";
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -30,7 +31,6 @@ const FOP_ICON: Record<FormaPagamento, React.ReactNode> = {
   CARTAO_DEBITO:  <CreditCard size={14} />,
   CARTAO_CREDITO: <CreditCard size={14} />,
   PIX:            <QrCode    size={14} />,
-  FIADO:          <Clock     size={14} />,
 };
 
 const FOP_LABEL: Record<FormaPagamento, string> = {
@@ -38,7 +38,6 @@ const FOP_LABEL: Record<FormaPagamento, string> = {
   CARTAO_DEBITO:  "Débito",
   CARTAO_CREDITO: "Crédito",
   PIX:            "PIX",
-  FIADO:          "Fiado",
 };
 
 const PROXIMOS: Partial<Record<StatusPedido, StatusPedido>> = {
@@ -55,8 +54,9 @@ interface Props {
 }
 
 export function PedidoCard({ pedido, onMutate }: Props) {
-  const [minutos, setMinutos]     = useState(() => minutosDesde(pedido.criado_em));
-  const [loading, setLoading]     = useState<StatusPedido | null>(null);
+  const [minutos,    setMinutos]    = useState(() => minutosDesde(pedido.criado_em));
+  const [loading,    setLoading]    = useState<StatusPedido | null>(null);
+  const [pixAberto,  setPixAberto]  = useState(false);
 
   // Atualiza o timer a cada minuto
   useEffect(() => {
@@ -85,23 +85,45 @@ export function PedidoCard({ pedido, onMutate }: Props) {
         <span className="text-2xl font-black text-white leading-none">
           #{pedido.numero_pedido}
         </span>
-        <span className={`
-          flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold
-          ${pedido.forma_pagamento === "PIX"
-            ? "bg-emerald-500/15 text-emerald-400"
-            : pedido.forma_pagamento === "DINHEIRO"
-            ? "bg-blue-500/15 text-blue-400"
-            : "bg-purple-500/15 text-purple-400"}
-        `}>
-          {FOP_ICON[pedido.forma_pagamento]}
-          {FOP_LABEL[pedido.forma_pagamento]}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {pedido.pago_em && (
+            <span className="flex items-center gap-1 text-xs text-emerald-400 font-semibold">
+              <CheckCircle2 size={12} />
+              Pago
+            </span>
+          )}
+          <span className={`
+            flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold
+            ${pedido.forma_pagamento === "PIX"
+              ? "bg-emerald-500/15 text-emerald-400"
+              : pedido.forma_pagamento === "DINHEIRO"
+              ? "bg-blue-500/15 text-blue-400"
+              : "bg-purple-500/15 text-purple-400"}
+          `}>
+            {FOP_ICON[pedido.forma_pagamento]}
+            {FOP_LABEL[pedido.forma_pagamento]}
+          </span>
+        </div>
       </div>
 
-      {/* Linha 2: cliente */}
-      <p className="text-sm text-gray-300 truncate mb-2">
-        {pedido.cliente?.nome ?? "Cliente balcão"}
-      </p>
+      {/* Linha 2: cliente + badge delivery */}
+      <div className="flex items-center gap-2 mb-2">
+        <p className="text-sm text-gray-300 truncate flex-1">
+          {pedido.cliente?.nome ?? "Cliente balcão"}
+        </p>
+        {pedido.tipo_entrega === "DELIVERY" && (
+          <span className="shrink-0 flex items-center gap-1 text-xs font-semibold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">
+            <Bike size={11} /> Delivery
+          </span>
+        )}
+      </div>
+
+      {/* Endereço de entrega */}
+      {pedido.tipo_entrega === "DELIVERY" && pedido.endereco_entrega && (
+        <p className="text-xs text-amber-300/70 mb-2 leading-snug">
+          📍 {pedido.endereco_entrega}
+        </p>
+      )}
 
       {/* Itens com adicionais em negrito */}
       <div className="space-y-1 mb-3">
@@ -146,6 +168,22 @@ export function PedidoCard({ pedido, onMutate }: Props) {
       {/* Ações */}
       {(proximo || pedido.status === "AGUARDANDO" || pedido.status === "EM_PREPARO" || pedido.status === "PRONTO") && (
         <div className="flex gap-2 mt-2">
+          {/* Botão Pix (para pedidos PIX não pagos e não finalizados) */}
+          {pedido.forma_pagamento === "PIX" &&
+           !pedido.pago_em &&
+           pedido.status !== "CANCELADO" &&
+           pedido.status !== "ENTREGUE" && (
+            <button
+              onClick={() => setPixAberto(true)}
+              className="flex items-center justify-center min-h-[44px] min-w-[44px]
+                         bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400
+                         rounded-lg transition-colors"
+              title="Ver QR Code Pix"
+            >
+              <QrCode size={14} />
+            </button>
+          )}
+
           {proximo && (
             <button
               onClick={() => avancar(proximo)}
@@ -173,6 +211,14 @@ export function PedidoCard({ pedido, onMutate }: Props) {
             </button>
           )}
         </div>
+      )}
+
+      {pixAberto && (
+        <ModalPix
+          pedidoId={pedido.id}
+          numeroPedido={pedido.numero_pedido}
+          onClose={() => { setPixAberto(false); onMutate(); }}
+        />
       )}
     </article>
   );

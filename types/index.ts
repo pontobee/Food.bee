@@ -11,8 +11,7 @@ export type FormaPagamento =
   | "DINHEIRO"
   | "CARTAO_DEBITO"
   | "CARTAO_CREDITO"
-  | "PIX"
-  | "FIADO";
+  | "PIX";
 
 export type TipoAdicional = "ADICIONAL" | "EXCECAO";
 export type RoleUsuario   = "ADMIN" | "CAIXA";
@@ -33,21 +32,34 @@ export interface ItemPedidoDTO {
   adicionais:             ItemAdicionalDTO[];
 }
 
+export type TipoEntrega = "BALCAO" | "DELIVERY";
+
+export interface TaxaEntregaDTO {
+  id:        string;
+  nome:      string;
+  taxa:      number;
+  tempo_min: number | null;
+}
+
 export interface PedidoDTO {
-  id:              string;
-  numero_pedido:   number;
-  status:          StatusPedido;
-  forma_pagamento: FormaPagamento;
-  origem:          string;
-  subtotal:        number;
-  desconto:        number;
-  total:           number;
-  troco:           number | null;
-  observacao:      string | null;
-  criado_em:       string;
-  atualizado_em:   string;
-  cliente:         { id: string; nome: string; telefone: string } | null;
-  itens:           ItemPedidoDTO[];
+  id:               string;
+  numero_pedido:    number;
+  status:           StatusPedido;
+  forma_pagamento:  FormaPagamento;
+  origem:           string;
+  subtotal:         number;
+  desconto:         number;
+  total:            number;
+  troco:            number | null;
+  observacao:       string | null;
+  pago_em:          string | null;
+  tipo_entrega:     TipoEntrega;
+  taxa_entrega:     number | null;
+  endereco_entrega: string | null;
+  criado_em:        string;
+  atualizado_em:    string;
+  cliente:          { id: string; nome: string; telefone: string } | null;
+  itens:            ItemPedidoDTO[];
 }
 
 export interface ProdutoDTO {
@@ -86,4 +98,10 @@ export interface ChartDataPoint {
   name:      string;
   receita:   number;
   pedidos:   number;
+}
+
+export interface ChartsDTO {
+  faturamento7d: ChartDataPoint[];
+  top5Produtos:  { nome: string; quantidade: number }[];
+  pagamentos:    { name: string; value: number }[];
 }

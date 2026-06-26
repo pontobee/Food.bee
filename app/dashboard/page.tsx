@@ -6,6 +6,7 @@ import {
   ShoppingBag, DollarSign, TrendingUp, AlertTriangle,
 } from "lucide-react";
 import type { StatsDTO } from "@/types";
+import ChartsBI from "@/components/dashboard/ChartsBI";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -89,6 +90,9 @@ export default function DashboardPage() {
           Kanban em tempo real.
         </p>
       </div>
+
+      {/* Gráficos BI — apenas ADMIN */}
+      {role === "ADMIN" && <ChartsBI />}
     </div>
   );
 }

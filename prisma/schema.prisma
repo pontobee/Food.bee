@@ -56,13 +56,18 @@ enum FormaPagamento {
   CARTAO_DEBITO
   CARTAO_CREDITO
   PIX
-  FIADO // crédito interno controlado pelo admin
 }
 
 enum OrigemPedido {
   BALCAO
   WHATSAPP
   TELEFONE
+  CARDAPIO_DIGITAL
+}
+
+enum TipoEntrega {
+  BALCAO
+  DELIVERY
 }
 
 enum TipoAdicional {
@@ -126,6 +131,8 @@ model Lanchonete {
 
   // relações
   assinatura       Assinatura?
+  pix_config       PixConfig?
+  taxas_entrega    TaxaEntrega[]
   usuarios         Usuario[]
   clientes         Cliente[]
   categorias       Categoria[]
@@ -319,15 +326,23 @@ model Pedido {
   troco           Decimal?       @db.Decimal(10, 2) // apenas para DINHEIRO
   observacao      String?
   motivo_cancelamento String?
-  criado_em       DateTime       @default(now()) @db.Timestamptz(3)
+  pago_em          DateTime?      @db.Timestamptz(3)
+  pix_txid         String?        @db.VarChar(255)
+  pix_qrcode       String?        @db.Text
+  tipo_entrega     TipoEntrega    @default(BALCAO)
+  taxa_entrega_id  String?        @db.Uuid
+  taxa_entrega     Decimal?       @db.Decimal(8, 2) // snapshot do valor no momento do pedido
+  endereco_entrega String?        @db.VarChar(255)
+  criado_em        DateTime       @default(now()) @db.Timestamptz(3)
   atualizado_em   DateTime       @updatedAt @db.Timestamptz(3)
   inativo_em      DateTime?      @db.Timestamptz(3)
 
-  lanchonete Lanchonete   @relation(fields: [lanchonete_id], references: [id])
-  cliente    Cliente?     @relation(fields: [cliente_id], references: [id])
-  usuario    Usuario      @relation(fields: [usuario_id], references: [id])
-  itens      ItemPedido[]
-  transacao  Transacao?   // gerada automaticamente ao finalizar
+  lanchonete   Lanchonete    @relation(fields: [lanchonete_id], references: [id])
+  cliente      Cliente?      @relation(fields: [cliente_id], references: [id])
+  usuario      Usuario       @relation(fields: [usuario_id], references: [id])
+  zona_entrega TaxaEntrega?  @relation(fields: [taxa_entrega_id], references: [id])
+  itens        ItemPedido[]
+  transacao    Transacao?
 
   // numero_pedido único por tenant
   @@unique([lanchonete_id, numero_pedido])
@@ -443,6 +458,45 @@ model MovimentacaoEstoque {
   @@index([lanchonete_id, produto_id])
   @@index([lanchonete_id, criado_em(sort: Desc)])
   @@map("movimentacoes_estoque")
+}
+
+// =============================================================================
+// TAXA_ENTREGA — zonas/bairros com taxas de delivery por tenant
+// =============================================================================
+
+model TaxaEntrega {
+  id            String    @id @default(uuid()) @db.Uuid
+  lanchonete_id String    @db.Uuid
+  nome          String    @db.VarChar(80)  // "Centro", "Bairro Norte", etc.
+  taxa          Decimal   @db.Decimal(8, 2)
+  tempo_min     Int?      // tempo estimado de entrega em minutos
+  ativa         Boolean   @default(true)
+  criado_em     DateTime  @default(now()) @db.Timestamptz(3)
+  atualizado_em DateTime  @updatedAt @db.Timestamptz(3)
+
+  lanchonete Lanchonete @relation(fields: [lanchonete_id], references: [id])
+  pedidos    Pedido[]
+
+  @@index([lanchonete_id, ativa])
+  @@map("taxas_entrega")
+}
+
+// =============================================================================
+// PIX_CONFIG — credenciais do gateway Pix por tenant (Mercado Pago)
+// access_token: APP_USR-... (produção) ou TEST-... (sandbox)
+// =============================================================================
+
+model PixConfig {
+  id            String           @id @default(uuid()) @db.Uuid
+  lanchonete_id String           @unique @db.Uuid
+  gateway       GatewayPagamento @default(MERCADO_PAGO)
+  access_token  String           @db.Text
+  criado_em     DateTime         @default(now()) @db.Timestamptz(3)
+  atualizado_em DateTime         @updatedAt @db.Timestamptz(3)
+
+  lanchonete Lanchonete @relation(fields: [lanchonete_id], references: [id])
+
+  @@map("pix_configs")
 }
 
 // =============================================================================
