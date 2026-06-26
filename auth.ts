@@ -1,8 +1,8 @@
-import NextAuth      from "next-auth";
-import Credentials   from "next-auth/providers/credentials";
-import bcrypt        from "bcryptjs";
+import NextAuth from "next-auth";
+import Credentials from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
 import { authConfig } from "./auth.config";
-import { prisma }    from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 // Config completa (Node.js runtime only — nunca importada pelo middleware)
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -10,7 +10,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: {
-        email:    { label: "Email", type: "email"    },
+        email: { label: "Email", type: "email" },
         password: { label: "Senha", type: "password" },
       },
       async authorize(credentials) {
@@ -32,16 +32,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         await prisma.usuario.update({
           where: { id: usuario.id },
-          data:  { ultimo_acesso_em: new Date() },
+          data: { ultimo_acesso_em: new Date() },
         });
 
         return {
-          id:                usuario.id,
-          name:              usuario.nome,
-          email:             usuario.email,
-          lanchonete_id:     usuario.lanchonete_id,
-          lanchonete_nome:   usuario.lanchonete.nome,
-          role:              usuario.role,
+          id: usuario.id,
+          name: usuario.nome,
+          email: usuario.email,
+          lanchonete_id: usuario.lanchonete_id,
+          lanchonete_nome: usuario.lanchonete.nome,
+          role: usuario.role,
           assinatura_status: usuario.lanchonete.assinatura?.status ?? "TRIAL",
         };
       },
