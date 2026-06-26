@@ -72,7 +72,7 @@ describe("Pedidos — isolamento de tenant", () => {
     await expect(
       updateOrderStatus(
         "pedido-de-tenant-b",
-        { status: "PREPARANDO" },
+        { status: "EM_PREPARO" },
         { lanchoneteId: TENANT_A, usuarioId: USER_A }
       )
     ).rejects.toThrow(OrderNotFoundError);
@@ -88,7 +88,7 @@ describe("Pedidos — isolamento de tenant", () => {
     await expect(
       updateOrderStatus(
         "pedido-alheio",
-        { status: "ENTREGUE" },
+        { status: "PRONTO" },
         { lanchoneteId: TENANT_A, usuarioId: USER_A }
       )
     ).rejects.toThrow(OrderNotFoundError);
