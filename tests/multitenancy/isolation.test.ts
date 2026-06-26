@@ -211,7 +211,7 @@ describe("Estoque — isolamento de tenant", () => {
 
   it("movimentarEstoque rejeita produto que não pertence ao tenant", async () => {
     // tx.produto.findFirst retorna null → produto não existe para TENANT_A
-    vi.mocked(prisma.$transaction).mockImplementation(async (fn: (tx: unknown) => unknown) => {
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: (tx: never) => unknown) => {
       const tx = {
         produto:             { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() },
         movimentacaoEstoque: { create:    vi.fn() },
@@ -229,7 +229,7 @@ describe("Estoque — isolamento de tenant", () => {
 
   it("movimentarEstoque não executa update quando produto não pertence ao tenant", async () => {
     const mockUpdate = vi.fn();
-    vi.mocked(prisma.$transaction).mockImplementation(async (fn: (tx: unknown) => unknown) => {
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: (tx: never) => unknown) => {
       const tx = {
         produto:             { findFirst: vi.fn().mockResolvedValue(null), update: mockUpdate },
         movimentacaoEstoque: { create:    vi.fn() },
@@ -250,7 +250,7 @@ describe("Estoque — isolamento de tenant", () => {
   it("movimentarEstoque persiste a movimentação com lanchonete_id do contexto", async () => {
     const mockCreate = vi.fn().mockResolvedValue({ id: "mov-1", lanchonete_id: TENANT_A });
 
-    vi.mocked(prisma.$transaction).mockImplementation(async (fn: (tx: unknown) => unknown) => {
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: (tx: never) => unknown) => {
       const tx = {
         produto: {
           findFirst: vi.fn().mockResolvedValue({ id: "prod-1", estoque_atual: 10 }),

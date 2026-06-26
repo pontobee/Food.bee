@@ -14,12 +14,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email:    { label: "Email", type: "email"    },
         password: { label: "Senha", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const key = `login:${credentials.email}`;
-        const { allowed } = checkRateLimit(key);
-        if (!allowed) return null;
+        // Chave composta IP+email: bloqueia força bruta por conta E por origem.
+        // x-forwarded-for pode ter múltiplos IPs (proxy chain) — usamos o primeiro.
+        const forwarded = request.headers.get("x-forwarded-for");
+        const ip        = forwarded?.split(",")[0]?.trim()
+                       ?? request.headers.get("x-real-ip")
+                       ?? "unknown";
+
+        const emailKey = `login:email:${credentials.email}`;
+        const ipKey    = `login:ip:${ip}`;
+
+        const { allowed: emailOk } = checkRateLimit(emailKey);
+        const { allowed: ipOk }    = checkRateLimit(ipKey);
+        if (!emailOk || !ipOk) return null;
 
         const usuario = await prisma.usuario.findFirst({
           where: { email: credentials.email as string, inativo_em: null },
@@ -40,7 +50,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           data:  { ultimo_acesso_em: new Date() },
         });
 
-        resetRateLimit(key);
+        resetRateLimit(emailKey);
+        resetRateLimit(ipKey);
 
         return {
           id:                usuario.id,
