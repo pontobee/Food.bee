@@ -30,10 +30,11 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
   const [forma,        setForma]       = useState<FormaPagamento>("PIX");
   const [obs,          setObs]         = useState("");
   const [clienteNome,  setClienteNome] = useState("");
-  const [tipoEntrega,  setTipoEntrega] = useState<"BALCAO" | "DELIVERY">("BALCAO");
-  const [taxaId,       setTaxaId]      = useState<string>("");
-  const [endereco,     setEndereco]    = useState("");
-  const [salvando,     setSalvando]    = useState(false);
+  const [tipoEntrega,  setTipoEntrega]  = useState<"BALCAO" | "DELIVERY">("BALCAO");
+  const [taxaId,       setTaxaId]       = useState<string>("");
+  const [endereco,     setEndereco]     = useState("");
+  const [valorRecebido, setValorRecebido] = useState("");
+  const [salvando,     setSalvando]     = useState(false);
 
   useEffect(() => {
     fetch("/api/produtos").then((r) => r.json()).then(setProdutos);
@@ -108,10 +109,15 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
     if (carrinho.length === 0) return;
     setSalvando(true);
     try {
+      const trocoCalc = forma === "DINHEIRO" && valorRecebido
+        ? parseFloat(valorRecebido) - total
+        : null;
+
       const body = {
         forma_pagamento:  forma,
         observacao:       obs || null,
         cliente_nome:     clienteNome || null,
+        troco:            trocoCalc !== null && trocoCalc >= 0 ? trocoCalc : null,
         tipo_entrega:     tipoEntrega,
         taxa_entrega_id:  tipoEntrega === "DELIVERY" && taxaId ? taxaId : undefined,
         endereco_entrega: tipoEntrega === "DELIVERY" ? endereco || null : null,
@@ -352,6 +358,27 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
                   </button>
                 ))}
               </div>
+
+              {/* Troco (apenas DINHEIRO) */}
+              {forma === "DINHEIRO" && (
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-500">Valor recebido (R$)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="0,00"
+                    value={valorRecebido}
+                    onChange={(e) => setValorRecebido(e.target.value)}
+                    className="input text-sm w-full"
+                  />
+                  {valorRecebido && parseFloat(valorRecebido) >= total && (
+                    <p className="text-xs text-emerald-400 font-semibold">
+                      Troco: R$ {(parseFloat(valorRecebido) - total).toFixed(2).replace(".", ",")}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="flex items-center justify-between">
                 <div>

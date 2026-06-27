@@ -51,8 +51,9 @@ export interface PedidoDTO {
   desconto:         number;
   total:            number;
   troco:            number | null;
-  observacao:       string | null;
-  pago_em:          string | null;
+  observacao:            string | null;
+  motivo_cancelamento:   string | null;
+  pago_em:               string | null;
   tipo_entrega:     TipoEntrega;
   taxa_entrega:     number | null;
   endereco_entrega: string | null;
@@ -63,17 +64,18 @@ export interface PedidoDTO {
 }
 
 export interface ProdutoDTO {
-  id:            string;
-  nome:          string;
-  descricao:     string | null;
-  preco_venda:   number;
-  preco_custo:   number;
-  estoque_atual: number;
-  estoque_minimo: number;
-  unidade:       string;
-  imagem_url:    string | null;
-  categoria:     { id: string; nome: string } | null;
-  adicionais:    { id: string; nome: string; tipo: TipoAdicional; preco_extra: number }[];
+  id:                string;
+  nome:              string;
+  descricao:         string | null;
+  preco_venda:       number;
+  preco_custo:       number;
+  estoque_atual:     number;
+  estoque_minimo:    number;
+  controlar_estoque: boolean;
+  unidade:           string;
+  imagem_url:        string | null;
+  categoria:         { id: string; nome: string } | null;
+  adicionais:        { id: string; nome: string; tipo: TipoAdicional; preco_extra: number }[];
 }
 
 // Membro da equipe — retorno de GET /api/equipe.

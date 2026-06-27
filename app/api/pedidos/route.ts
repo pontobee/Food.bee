@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getTodaysOrders, createOrder, type CriarPedidoInput } from "@/modules/orders/orders.service";
 import { OrderValidationError } from "@/modules/orders/orders.errors";
+import { notificarCliente } from "@/modules/whatsapp/notificacoes.service";
 
 // GET /api/pedidos — retorna pedidos do dia do tenant autenticado
 export async function GET() {
@@ -29,6 +30,12 @@ export async function POST(req: NextRequest) {
       lanchoneteId: session.user.lanchonete_id,
       usuarioId:    session.user.id!,
     });
+
+    // Bot já notifica pedidos WHATSAPP; painel notifica se houver cliente vinculado
+    if (pedido.origem !== "WHATSAPP") {
+      notificarCliente(pedido.id, session.user.lanchonete_id, "AGUARDANDO").catch(console.error);
+    }
+
     return NextResponse.json(pedido, { status: 201 });
   } catch (err) {
     if (err instanceof OrderValidationError) {

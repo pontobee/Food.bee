@@ -13,7 +13,7 @@ const MOCK_PEDIDOS: PedidoDTO[] = [
     id: "1", numero_pedido: 23, status: "AGUARDANDO",
     forma_pagamento: "PIX", origem: "BALCAO",
     subtotal: 52.8, desconto: 0, total: 52.8, troco: null,
-    observacao: "Sem cebola no hamburguer",
+    observacao: "Sem cebola no hamburguer", motivo_cancelamento: null,
     criado_em: minus(3), atualizado_em: now, pago_em: null, tipo_entrega: "BALCAO" as const, taxa_entrega: null, endereco_entrega: null,
     cliente: { id: "c1", nome: "João Silva", telefone: "11999990001" },
     itens: [
@@ -30,7 +30,7 @@ const MOCK_PEDIDOS: PedidoDTO[] = [
     id: "2", numero_pedido: 22, status: "AGUARDANDO",
     forma_pagamento: "DINHEIRO", origem: "WHATSAPP",
     subtotal: 29.9, desconto: 0, total: 29.9, troco: 10.1,
-    observacao: null,
+    observacao: null, motivo_cancelamento: null,
     criado_em: minus(6), atualizado_em: now, pago_em: null, tipo_entrega: "BALCAO" as const, taxa_entrega: null, endereco_entrega: null,
     cliente: null,
     itens: [
@@ -43,7 +43,7 @@ const MOCK_PEDIDOS: PedidoDTO[] = [
     id: "3", numero_pedido: 21, status: "EM_PREPARO",
     forma_pagamento: "CARTAO_DEBITO", origem: "BALCAO",
     subtotal: 44.5, desconto: 0, total: 44.5, troco: null,
-    observacao: null,
+    observacao: null, motivo_cancelamento: null,
     criado_em: minus(18), atualizado_em: now, pago_em: null, tipo_entrega: "BALCAO" as const, taxa_entrega: null, endereco_entrega: null,
     cliente: { id: "c2", nome: "Maria Santos", telefone: "11999990002" },
     itens: [
@@ -56,7 +56,7 @@ const MOCK_PEDIDOS: PedidoDTO[] = [
     id: "4", numero_pedido: 20, status: "EM_PREPARO",
     forma_pagamento: "PIX", origem: "BALCAO",
     subtotal: 22.9, desconto: 0, total: 22.9, troco: null,
-    observacao: "Ponto da carne: bem passado",
+    observacao: "Ponto da carne: bem passado", motivo_cancelamento: null,
     criado_em: minus(35), atualizado_em: now, pago_em: null, tipo_entrega: "BALCAO" as const, taxa_entrega: null, endereco_entrega: null,
     cliente: { id: "c3", nome: "Carlos Mendes", telefone: "11999990003" },
     itens: [
@@ -68,7 +68,7 @@ const MOCK_PEDIDOS: PedidoDTO[] = [
     id: "5", numero_pedido: 19, status: "PRONTO",
     forma_pagamento: "CARTAO_CREDITO", origem: "BALCAO",
     subtotal: 67.2, desconto: 0, total: 67.2, troco: null,
-    observacao: null,
+    observacao: null, motivo_cancelamento: null,
     criado_em: minus(22), atualizado_em: now, pago_em: null, tipo_entrega: "BALCAO" as const, taxa_entrega: null, endereco_entrega: null,
     cliente: { id: "c4", nome: "Ana Lima", telefone: "11999990004" },
     itens: [
@@ -80,7 +80,7 @@ const MOCK_PEDIDOS: PedidoDTO[] = [
     id: "6", numero_pedido: 18, status: "ENTREGUE",
     forma_pagamento: "PIX", origem: "BALCAO",
     subtotal: 38.9, desconto: 0, total: 38.9, troco: null,
-    observacao: null,
+    observacao: null, motivo_cancelamento: null,
     criado_em: minus(45), atualizado_em: now, pago_em: null, tipo_entrega: "BALCAO" as const, taxa_entrega: null, endereco_entrega: null,
     cliente: { id: "c5", nome: "Pedro Costa", telefone: "11999990005" },
     itens: [
@@ -93,7 +93,7 @@ const MOCK_PEDIDOS: PedidoDTO[] = [
     id: "7", numero_pedido: 17, status: "CANCELADO",
     forma_pagamento: "DINHEIRO", origem: "WHATSAPP",
     subtotal: 22.9, desconto: 0, total: 22.9, troco: null,
-    observacao: null,
+    observacao: null, motivo_cancelamento: null,
     criado_em: minus(60), atualizado_em: now, pago_em: null, tipo_entrega: "BALCAO" as const, taxa_entrega: null, endereco_entrega: null,
     cliente: null,
     itens: [

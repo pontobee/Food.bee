@@ -39,11 +39,11 @@ export function usePedidos(lanchoneteId: string) {
   return { data: data ?? [], error, isLoading, mutate, pedidosPorStatus };
 }
 
-export async function atualizarStatus(id: string, status: StatusPedido) {
+export async function atualizarStatus(id: string, status: StatusPedido, motivo_cancelamento?: string) {
   const res = await fetch(`/api/pedidos/${id}`, {
     method:  "PATCH",
     headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ status }),
+    body:    JSON.stringify({ status, motivo_cancelamento }),
   });
   if (!res.ok) throw new Error("Erro ao atualizar pedido");
   return res.json();

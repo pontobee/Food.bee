@@ -26,6 +26,7 @@ export interface CriarPedidoInput {
   tipo_entrega?:     string;
   taxa_entrega_id?:  string;
   endereco_entrega?: string | null;
+  troco?:            number | null;
 }
 
 export interface AtualizarStatusInput {
@@ -98,6 +99,16 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
     where: { id: { in: produtoIds }, lanchonete_id: lid, inativo_em: null },
   });
   const produtoMap = new Map(produtos.map((p) => [p.id, p]));
+
+  // 2b. Validação de estoque (apenas produtos com controlar_estoque = true)
+  for (const item of itensInput) {
+    const produto = produtoMap.get(item.produto_id!);
+    if (produto?.controlar_estoque && produto.estoque_atual < (item.quantidade ?? 1)) {
+      throw new OrderValidationError(
+        `"${produto.nome}" sem estoque suficiente (disponível: ${produto.estoque_atual})`
+      );
+    }
+  }
 
   const adicionalIds = [
     ...new Set(
@@ -194,6 +205,11 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
       subtotal,
       desconto:        0,
       total,
+      troco:           input.troco ?? null,
+      // Pagamentos imediatos (dinheiro/cartão) são marcados como pagos na criação
+      pago_em: ["DINHEIRO", "CARTAO_DEBITO", "CARTAO_CREDITO"].includes(input.forma_pagamento ?? "")
+        ? new Date()
+        : null,
       itens: { create: itensData },
     },
     include: {

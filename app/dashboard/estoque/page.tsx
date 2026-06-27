@@ -7,6 +7,14 @@ import { AlertTriangle, Package, ArrowDownUp } from "lucide-react";
 import type { ProdutoDTO } from "@/types";
 import { MovimentacaoModal } from "@/components/dashboard/MovimentacaoModal";
 
+async function toggleControlarEstoque(id: string, valor: boolean) {
+  await fetch(`/api/produtos/${id}`, {
+    method:  "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify({ controlar_estoque: valor }),
+  });
+}
+
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function EstoquePage() {
@@ -69,6 +77,9 @@ export default function EstoquePage() {
                 {role === "ADMIN" && (
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Custo</th>
                 )}
+                {role === "ADMIN" && (
+                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-center">Ctrl. estoque</th>
+                )}
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Ações</th>
               </tr>
             </thead>
@@ -104,6 +115,24 @@ export default function EstoquePage() {
                     {role === "ADMIN" && (
                       <td className="px-4 py-3 text-right text-gray-400">
                         R$ {Number(produto.preco_custo ?? 0).toFixed(2).replace(".", ",")}
+                      </td>
+                    )}
+                    {role === "ADMIN" && (
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={async () => {
+                            await toggleControlarEstoque(produto.id, !produto.controlar_estoque);
+                            mutate();
+                          }}
+                          title={produto.controlar_estoque ? "Desativar controle de estoque" : "Ativar controle de estoque"}
+                          className={`w-9 h-5 rounded-full transition-colors relative ${
+                            produto.controlar_estoque ? "bg-brand-500" : "bg-dark-500"
+                          }`}
+                        >
+                          <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                            produto.controlar_estoque ? "translate-x-4" : "translate-x-0.5"
+                          }`} />
+                        </button>
                       </td>
                     )}
                     <td className="px-4 py-3 text-right">

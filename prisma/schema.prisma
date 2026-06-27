@@ -99,7 +99,10 @@ enum StatusWebhook {
 
 enum TipoMensagemWhatsApp {
   CONFIRMACAO_PEDIDO
+  PEDIDO_AGUARDANDO
+  PEDIDO_EM_PREPARO
   PEDIDO_PRONTO
+  PEDIDO_ENTREGUE
   PEDIDO_CANCELADO
   COBRANCA
   PROMO
@@ -264,8 +267,9 @@ model Produto {
   descricao       String?
   preco_venda     Decimal   @db.Decimal(10, 2)
   preco_custo     Decimal   @default(0) @db.Decimal(10, 2) // somente ADMIN visualiza
-  estoque_atual   Int       @default(0)
-  estoque_minimo  Int       @default(0) // alerta de estoque baixo
+  estoque_atual      Int     @default(0)
+  estoque_minimo     Int     @default(0) // alerta de estoque baixo
+  controlar_estoque  Boolean @default(false)
   unidade         String    @default("un") @db.VarChar(10)
   imagem_url      String?
   criado_em       DateTime  @default(now()) @db.Timestamptz(3)

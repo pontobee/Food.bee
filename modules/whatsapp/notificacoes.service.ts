@@ -1,20 +1,37 @@
 import { prisma }          from "@/lib/prisma";
 import { enviarMensagem }  from "@/lib/evolution";
+import { TipoMensagemWhatsApp } from "@prisma/client";
 
-type StatusNotificavel = "PRONTO" | "CANCELADO";
+type StatusNotificavel = "AGUARDANDO" | "EM_PREPARO" | "PRONTO" | "ENTREGUE" | "CANCELADO";
 
-const NOTIFICAVEIS = new Set<string>(["PRONTO", "CANCELADO"]);
+const NOTIFICAVEIS = new Set<string>(["AGUARDANDO", "EM_PREPARO", "PRONTO", "ENTREGUE", "CANCELADO"]);
+
+const TIPO_MAP: Record<StatusNotificavel, TipoMensagemWhatsApp> = {
+  AGUARDANDO: "PEDIDO_AGUARDANDO",
+  EM_PREPARO: "PEDIDO_EM_PREPARO",
+  PRONTO:     "PEDIDO_PRONTO",
+  ENTREGUE:   "PEDIDO_ENTREGUE",
+  CANCELADO:  "PEDIDO_CANCELADO",
+};
 
 function gerarTexto(status: StatusNotificavel, nome: string, numero: number, delivery: boolean): string {
-  if (status === "PRONTO") {
-    return delivery
-      ? `🛵 Olá, ${nome}! Seu pedido *#${numero}* saiu para entrega. Fique de olho! 😊`
-      : `🍔 Olá, ${nome}! Seu pedido *#${numero}* está pronto. Pode vir retirar no balcão! 😊`;
+  switch (status) {
+    case "AGUARDANDO":
+      return `👋 Olá, ${nome}! Seu pedido *#${numero}* foi recebido e está na fila. Em breve começa o preparo! 😊`;
+    case "EM_PREPARO":
+      return `👨‍🍳 Olá, ${nome}! Seu pedido *#${numero}* entrou em preparo. Já já fica pronto! ⏱️`;
+    case "PRONTO":
+      return delivery
+        ? `🛵 Olá, ${nome}! Seu pedido *#${numero}* saiu para entrega. Fique de olho! 😊`
+        : `🍔 Olá, ${nome}! Seu pedido *#${numero}* está pronto. Pode vir retirar no balcão! 😊`;
+    case "ENTREGUE":
+      return `✅ Olá, ${nome}! Seu pedido *#${numero}* foi entregue. Obrigado pela preferência! 😊`;
+    case "CANCELADO":
+      return `😕 Olá, ${nome}. Seu pedido *#${numero}* foi cancelado. Entre em contato conosco para mais informações.`;
   }
-  return `😕 Olá, ${nome}. Seu pedido *#${numero}* foi cancelado. Entre em contato conosco para mais informações.`;
 }
 
-// Chamada fire-and-forget após atualização de status.
+// Chamada fire-and-forget após criação ou atualização de status.
 // Falhas de envio são logadas mas não propagadas — não devem travar o fluxo do pedido.
 export async function notificarCliente(
   pedidoId:     string,
@@ -42,8 +59,8 @@ export async function notificarCliente(
 
   const { nome, telefone } = pedido.cliente;
   const delivery = pedido.tipo_entrega === "DELIVERY";
-  const texto    = gerarTexto(novoStatus as StatusNotificavel, nome, pedido.numero_pedido, delivery);
-  const tipo     = novoStatus === "PRONTO" ? "PEDIDO_PRONTO" : "PEDIDO_CANCELADO";
+  const status   = novoStatus as StatusNotificavel;
+  const texto    = gerarTexto(status, nome, pedido.numero_pedido, delivery);
 
   try {
     const res = await enviarMensagem(
@@ -58,7 +75,7 @@ export async function notificarCliente(
         cliente_id:      pedido.cliente_id,
         numero_destino:  telefone,
         mensagem:        texto,
-        tipo,
+        tipo:            TIPO_MAP[status],
         id_mensagem_wpp: res?.key?.id ?? null,
       },
     });
