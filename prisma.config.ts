@@ -10,6 +10,9 @@ loadEnv({ path: path.resolve(__dirname, ".env.local") });
 // DIRECT_DATABASE_URL → conexão direta  — usado pelo Migrate (DDL não passa por pool)
 export default defineConfig({
   schema: "prisma/schema.prisma",
+  migrations: {
+    seed: "npx tsx prisma/seed.ts",
+  },
   datasource: {
     url: env("DIRECT_DATABASE_URL"),
   },
