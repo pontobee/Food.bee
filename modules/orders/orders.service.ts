@@ -243,17 +243,33 @@ export async function updateOrderStatus(
 
   // Cria transação de receita ao entregar (apenas na transição para ENTREGUE)
   if (input.status === "ENTREGUE" && pedido.status !== "ENTREGUE") {
-    await prisma.transacao.create({
-      data: {
-        lanchonete_id: lid,
-        pedido_id:     id,
-        usuario_id:    uid,
-        tipo:          "RECEITA",
-        categoria:     "Venda",
-        descricao:     `Pedido #${pedido.numero_pedido}`,
-        valor:         pedido.total,
-      },
-    });
+    const ops: Promise<unknown>[] = [
+      prisma.transacao.create({
+        data: {
+          lanchonete_id: lid,
+          pedido_id:     id,
+          usuario_id:    uid,
+          tipo:          "RECEITA",
+          categoria:     "Venda",
+          descricao:     `Pedido #${pedido.numero_pedido}`,
+          valor:         pedido.total,
+        },
+      }),
+    ];
+
+    if (pedido.cliente_id) {
+      ops.push(
+        prisma.cliente.update({
+          where: { id: pedido.cliente_id },
+          data: {
+            total_pedidos: { increment: 1 },
+            total_gasto:   { increment: pedido.total },
+          },
+        })
+      );
+    }
+
+    await Promise.all(ops);
   }
 
   return atualizado;

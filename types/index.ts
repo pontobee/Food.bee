@@ -107,3 +107,39 @@ export interface ChartsDTO {
   top5Produtos:  { nome: string; quantidade: number }[];
   pagamentos:    { name: string; value: number }[];
 }
+
+export type TipoTransacao = "RECEITA" | "DESPESA";
+
+export interface TransacaoDTO {
+  id:           string;
+  tipo:         TipoTransacao;
+  categoria:    string;
+  descricao:    string;
+  valor:        number;
+  data:         string;
+  pedido_id:    string | null;
+  usuario_nome: string;
+  criado_em:    string;
+}
+
+export interface TransacoesPageDTO {
+  transacoes: TransacaoDTO[];
+  total:      number;
+  paginas:    number;
+}
+
+export interface ClienteDTO {
+  id:            string;
+  nome:          string;
+  telefone:      string;
+  endereco:      string | null;
+  total_pedidos: number;
+  total_gasto:   number;
+  criado_em:     string;
+}
+
+export interface ClientesPageDTO {
+  clientes: ClienteDTO[];
+  total:    number;
+  paginas:  number;
+}
