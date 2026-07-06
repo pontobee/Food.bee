@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth }       from "@/auth";
+import { authGuard }  from "@/lib/auth-guards";
 import {
   movimentarEstoque,
   getMovimentacoes,
@@ -15,9 +16,10 @@ import {
 // ADMIN e CAIXA podem ver (operação de balcão).
 export async function GET() {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const guard = authGuard(session);
+  if (guard) return guard;
 
-  const movimentacoes = await getMovimentacoes(session.user.lanchonete_id);
+  const movimentacoes = await getMovimentacoes(session!.user.lanchonete_id);
   return NextResponse.json(movimentacoes);
 }
 
@@ -25,7 +27,8 @@ export async function GET() {
 // ADMIN e CAIXA podem movimentar; a regra anti-estoque-negativo vive no service.
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const guard = authGuard(session);
+  if (guard) return guard;
 
   let body: MovimentarEstoqueInput;
   try {
@@ -36,8 +39,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const movimentacao = await movimentarEstoque(body, {
-      lanchoneteId: session.user.lanchonete_id,
-      usuarioId:    session.user.id!,
+      lanchoneteId: session!.user.lanchonete_id,
+      usuarioId:    session!.user.id!,
     });
     return NextResponse.json(movimentacao, { status: 201 });
   } catch (err) {

@@ -1,18 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Plus, Minus, Search, Bike, Store } from "lucide-react";
+import { X, Plus, Minus, Search, Bike, Store, AlertCircle } from "lucide-react";
 import type { ProdutoDTO, FormaPagamento, ItemAdicionalDTO, TaxaEntregaDTO } from "@/types";
 
 interface LinhaCarrinho {
-  produto:     ProdutoDTO;
-  quantidade:  number;
-  adicionais:  (ItemAdicionalDTO & { selecionado: boolean })[];
+  produto:    ProdutoDTO;
+  quantidade: number;
+  adicionais: (ItemAdicionalDTO & { selecionado: boolean })[];
 }
 
 interface Props {
-  onClose:  () => void;
-  onSalvo:  () => void;
+  onClose: () => void;
+  onSalvo: () => void;
 }
 
 const FORMA_OPTS: { value: FormaPagamento; label: string }[] = [
@@ -34,9 +34,17 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
   const [taxaId,       setTaxaId]      = useState<string>("");
   const [endereco,     setEndereco]    = useState("");
   const [salvando,     setSalvando]    = useState(false);
+  const [erroProd,     setErroProd]    = useState(false);
+  const [erroSalvar,   setErroSalvar]  = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/produtos").then((r) => r.json()).then(setProdutos);
+    fetch("/api/produtos")
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(setProdutos)
+      .catch(() => setErroProd(true));
     fetch("/api/delivery/taxas").then((r) => r.json()).then((d) => {
       if (Array.isArray(d)) setTaxas(d);
     });
@@ -107,6 +115,7 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
   async function salvar() {
     if (carrinho.length === 0) return;
     setSalvando(true);
+    setErroSalvar(null);
     try {
       const body = {
         forma_pagamento:  forma,
@@ -116,16 +125,16 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
         taxa_entrega_id:  tipoEntrega === "DELIVERY" && taxaId ? taxaId : undefined,
         endereco_entrega: tipoEntrega === "DELIVERY" ? endereco || null : null,
         itens: carrinho.map((l) => ({
-          produto_id:    l.produto.id,
-          produto_nome:  l.produto.nome,
+          produto_id:     l.produto.id,
+          produto_nome:   l.produto.nome,
           preco_unitario: l.produto.preco_venda,
-          quantidade:    l.quantidade,
-          adicionais:    l.adicionais
+          quantidade:     l.quantidade,
+          adicionais:     l.adicionais
             .filter((a) => a.selecionado)
             .map((a) => ({
               produto_adicional_id: a.id,
-              nome:       a.nome,
-              tipo:       a.tipo,
+              nome:        a.nome,
+              tipo:        a.tipo,
               preco_extra: a.preco_extra,
             })),
         })),
@@ -135,8 +144,10 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(body),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error("Não foi possível salvar o pedido.");
       onSalvo();
+    } catch (e) {
+      setErroSalvar(e instanceof Error ? e.message : "Erro inesperado.");
     } finally {
       setSalvando(false);
     }
@@ -148,7 +159,7 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
       <div className="w-full max-w-2xl bg-dark-800 border border-dark-600
                       rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[92dvh]">
 
-        {/* Header do modal */}
+        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-dark-600 shrink-0">
           <h2 className="font-bold text-white">Novo Pedido</h2>
           <button onClick={onClose} className="btn-ghost px-2">
@@ -174,8 +185,14 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
                 />
               </div>
             </div>
+
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              {produtosFiltrados.map((p) => (
+              {erroProd ? (
+                <div className="flex items-center gap-2 text-red-400 text-xs p-3">
+                  <AlertCircle size={14} className="shrink-0" />
+                  Erro ao carregar produtos. Feche e tente novamente.
+                </div>
+              ) : produtosFiltrados.map((p) => (
                 <button
                   key={p.id}
                   onClick={() => adicionarProduto(p)}
@@ -341,7 +358,7 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
                   <button
                     key={o.value}
                     onClick={() => setForma(o.value)}
-                    className={`px-3 min-h-[36px] rounded-lg text-xs font-semibold
+                    className={`px-3 min-h-[44px] rounded-lg text-xs font-semibold
                                 border transition-colors ${
                       forma === o.value
                         ? "bg-brand-500 border-brand-500 text-white"
@@ -352,6 +369,13 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
                   </button>
                 ))}
               </div>
+
+              {erroSalvar && (
+                <div className="flex items-center gap-2 text-red-400 text-xs">
+                  <AlertCircle size={13} className="shrink-0" />
+                  {erroSalvar}
+                </div>
+              )}
 
               <div className="flex items-center justify-between">
                 <div>

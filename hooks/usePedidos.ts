@@ -4,7 +4,11 @@ import useSWR       from "swr";
 import { useEffect } from "react";
 import type { PedidoDTO, StatusPedido } from "@/types";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const fetcher = (url: string) =>
+  fetch(url).then((r) => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  });
 
 export function usePedidos(lanchoneteId: string) {
   const { data, error, isLoading, mutate } = useSWR<PedidoDTO[]>(

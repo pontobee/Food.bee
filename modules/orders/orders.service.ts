@@ -1,10 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma, FormaPagamento, OrigemPedido, StatusPedido, TipoEntrega } from "@prisma/client";
 import { OrderValidationError, OrderNotFoundError } from "@/modules/orders/orders.errors";
+import { startOfDayBRT } from "@/lib/timezone";
+import type { TenantContext } from "@/modules/shared/tenant.types";
 
 const FORMAS_PAGAMENTO = new Set<string>(Object.values(FormaPagamento));
 const ORIGENS_PEDIDO   = new Set<string>(Object.values(OrigemPedido));
 const TIPOS_ENTREGA    = new Set<string>(Object.values(TipoEntrega));
+const STATUSES_PEDIDO  = new Set<string>(Object.values(StatusPedido));
 
 // ── Tipos de entrada (DTOs vindos da API) ──────────────────────
 interface ItemAdicionalInput {
@@ -32,16 +35,10 @@ export interface AtualizarStatusInput {
   motivo_cancelamento?: string | null;
 }
 
-/** Contexto do tenant autenticado — toda operação é isolada por lanchonete. */
-interface TenantContext {
-  lanchoneteId: string;
-  usuarioId: string;
-}
 
 // ── Leitura: pedidos do dia do tenant ──────────────────────────
 export function getTodaysOrders(lanchoneteId: string) {
-  const inicioDia = new Date();
-  inicioDia.setHours(0, 0, 0, 0);
+  const inicioDia = startOfDayBRT();
 
   return prisma.pedido.findMany({
     where: {
@@ -171,6 +168,10 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
   const total = subtotal.add(taxaEntregaValor);
 
   // 5. Número sequencial por tenant via função PG
+  // UUID inválido causaria erro silencioso no cast ::uuid — validamos antes.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lid)) {
+    throw new OrderValidationError("lanchonete_id inválido");
+  }
   const seqResult = await prisma.$queryRaw<{ next_numero_pedido: number }[]>`
     SELECT next_numero_pedido(${lid}::uuid) AS next_numero_pedido
   `;
@@ -209,6 +210,10 @@ export async function updateOrderStatus(
   ctx: TenantContext
 ) {
   const { lanchoneteId: lid, usuarioId: uid } = ctx;
+
+  if (!input.status || !STATUSES_PEDIDO.has(input.status)) {
+    throw new OrderValidationError("status inválido");
+  }
 
   const pedido = await prisma.pedido.findFirst({
     where: { id, lanchonete_id: lid, inativo_em: null },

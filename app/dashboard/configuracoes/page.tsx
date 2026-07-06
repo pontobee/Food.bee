@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSession }                  from "next-auth/react";
+import { useRouter }                   from "next/navigation";
 import Image                           from "next/image";
 import { Settings, User, Bell, QrCode, Check, Loader2, Bike, Trash2, Plus, Upload } from "lucide-react";
 import type { TaxaEntregaDTO } from "@/types";
@@ -309,7 +310,13 @@ function LogoSection() {
 
 export default function ConfiguracoesPage() {
   const { data: session } = useSession();
-  const role = session?.user?.role;
+  const router            = useRouter();
+  const role              = session?.user?.role;
+
+  // Redireciona não-ADMIN assim que a sessão carregar
+  useEffect(() => {
+    if (session && role !== "ADMIN") router.replace("/dashboard");
+  }, [session, role, router]);
 
   return (
     <div className="space-y-5 max-w-2xl">

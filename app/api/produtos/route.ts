@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth }   from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { auth }          from "@/auth";
+import { authGuard }     from "@/lib/auth-guards";
+import { prisma }        from "@/lib/prisma";
 import { createProduto } from "@/modules/catalog/produtos.service";
 
 // GET /api/produtos — lista produtos ativos do tenant
 export async function GET() {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const guard = authGuard(session);
+  if (guard) return guard;
 
   const produtos = await prisma.produto.findMany({
     where: {
-      lanchonete_id: session.user.lanchonete_id,
+      lanchonete_id: session!.user.lanchonete_id,
       inativo_em:    null,
     },
     include: {
@@ -24,7 +26,7 @@ export async function GET() {
   });
 
   // Remove preco_custo para CAIXA
-  const role = session.user.role;
+  const role = session!.user.role;
   const data = produtos.map((p) => ({
     ...p,
     preco_custo: role === "ADMIN" ? Number(p.preco_custo) : undefined,
