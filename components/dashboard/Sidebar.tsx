@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   ClipboardList,
   Package,
+  BookOpen,
   DollarSign,
   MessageSquare,
   Users,
@@ -19,6 +20,7 @@ import {
 const NAV = [
   { href: "/dashboard",               label: "Visão Geral", icon: LayoutDashboard },
   { href: "/dashboard/pedidos",       label: "Pedidos",     icon: ClipboardList   },
+  { href: "/dashboard/produtos",      label: "Cardápio",    icon: BookOpen,      adminOnly: true },
   { href: "/dashboard/estoque",       label: "Estoque",     icon: Package         },
   { href: "/dashboard/financeiro",    label: "Financeiro",  icon: DollarSign,   adminOnly: true },
   { href: "/dashboard/clientes",      label: "Clientes",    icon: Contact,       adminOnly: true },

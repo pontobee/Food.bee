@@ -129,6 +129,7 @@ model Lanchonete {
   cnpj       String?   @unique @db.VarChar(18)
   endereco   String?
   logo_url   String?
+  horarios   Json?     // { "0": { aberto, abertura, fechamento }, … } 0=Dom…6=Sáb
   criado_em  DateTime  @default(now()) @db.Timestamptz(3)
   inativo_em DateTime? @db.Timestamptz(3) // soft delete
 

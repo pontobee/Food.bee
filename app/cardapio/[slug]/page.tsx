@@ -15,11 +15,29 @@ interface Produto {
   preco_venda: number; imagem_url: string | null; categoria_id: string | null;
 }
 interface Categoria { id: string; nome: string; ordem: number }
+interface HorarioDia { aberto: boolean; abertura: string; fechamento: string }
 interface CardapioData {
-  lanchonete: { id: string; nome: string; logo_url: string | null; telefone: string | null };
+  lanchonete: { id: string; nome: string; logo_url: string | null; telefone: string | null; horarios?: Record<string, HorarioDia> };
   categorias: Categoria[];
   produtos:   Produto[];
   adicionais: Adicional[];
+}
+
+function calcIsAberto(horarios?: Record<string, HorarioDia>): boolean | null {
+  if (!horarios) return null;
+  const now  = new Date();
+  const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+  const sp   = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    weekday:  "short", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(now);
+  const partOf = (type: string) => sp.find((p) => p.type === type)?.value ?? "";
+  const diaIdx = DIAS.findIndex((d) => partOf("weekday").toLowerCase().startsWith(d));
+  const hora   = `${partOf("hour")}:${partOf("minute")}`;
+  const h      = horarios[String(diaIdx)];
+  if (!h) return null;
+  if (!h.aberto) return false;
+  return hora >= h.abertura && hora <= h.fechamento;
 }
 interface CartItem {
   produto:    Produto;
@@ -62,6 +80,7 @@ export default function CardapioPage() {
   const [pagamento,      setPagamento]      = useState<string>("PIX");
   const [enviando,       setEnviando]       = useState(false);
   const [pedidoNum,      setPedidoNum]      = useState<number | null>(null);
+  const [erroEnvio,      setErroEnvio]      = useState<string | null>(null);
 
   const catBarRef = useRef<HTMLDivElement>(null);
 
@@ -143,6 +162,7 @@ export default function CardapioPage() {
 
   async function enviarPedido() {
     setEnviando(true);
+    setErroEnvio(null);
     try {
       const res = await fetch(`/api/public/${slug}/pedidos`, {
         method:  "POST",
@@ -159,14 +179,21 @@ export default function CardapioPage() {
           cliente_tel:     telefone || undefined,
         }),
       });
-      if (!res.ok) throw new Error("Erro ao enviar pedido");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Erro ao enviar pedido");
+      }
       const json = await res.json();
       setPedidoNum(json.numero_pedido);
       setCart([]);
+    } catch (err) {
+      setErroEnvio(err instanceof Error ? err.message : "Erro ao enviar pedido");
     } finally {
       setEnviando(false);
     }
   }
+
+  const aberto = calcIsAberto(data.lanchonete.horarios);
 
   // ── Render ────────────────────────────────────────────────────
   return (
@@ -219,6 +246,16 @@ export default function CardapioPage() {
           </div>
         )}
         <h1 className="text-xl font-bold text-white text-center">{data.lanchonete.nome}</h1>
+        {aberto !== null && (
+          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
+            aberto
+              ? "bg-emerald-500/15 text-emerald-400"
+              : "bg-red-500/15 text-red-400"
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${aberto ? "bg-emerald-400" : "bg-red-400"}`} />
+            {aberto ? "Aberto agora" : "Fechado agora"}
+          </span>
+        )}
       </div>
 
       {/* Filtro de categorias */}
@@ -322,6 +359,7 @@ export default function CardapioPage() {
           observacao={observacao} onObservacao={setObservacao}
           pagamento={pagamento} onPagamento={setPagamento}
           enviando={enviando}
+          erro={erroEnvio}
           onEnviar={enviarPedido}
           onFechar={() => setCheckoutAberto(false)}
         />
@@ -532,14 +570,14 @@ function DrawerCarrinho({
 function ModalCheckout({
   total, nome, onNome, telefone, onTelefone,
   observacao, onObservacao, pagamento, onPagamento,
-  enviando, onEnviar, onFechar,
+  enviando, erro, onEnviar, onFechar,
 }: {
   total: number;
   nome: string; onNome: (v: string) => void;
   telefone: string; onTelefone: (v: string) => void;
   observacao: string; onObservacao: (v: string) => void;
   pagamento: string; onPagamento: (v: string) => void;
-  enviando: boolean; onEnviar: () => void; onFechar: () => void;
+  enviando: boolean; erro: string | null; onEnviar: () => void; onFechar: () => void;
 }) {
   return (
     <Overlay onFechar={onFechar}>
@@ -616,6 +654,11 @@ function ModalCheckout({
             <span className="text-gray-400">Total</span>
             <span className="text-white font-bold">{fmtBRL(total)}</span>
           </div>
+          {erro && (
+            <p className="mb-3 text-sm text-red-400 bg-red-500/10 rounded-lg px-3 py-2">
+              {erro}
+            </p>
+          )}
           <button
             onClick={onEnviar}
             disabled={enviando}

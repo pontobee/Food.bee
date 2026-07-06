@@ -3,8 +3,236 @@
 import { useEffect, useRef, useState } from "react";
 import { useSession }                  from "next-auth/react";
 import Image                           from "next/image";
-import { Settings, User, Bell, QrCode, Check, Loader2, Bike, Trash2, Plus, Upload } from "lucide-react";
+import { Settings, User, Bell, QrCode, Check, Loader2, Bike, Trash2, Plus, Upload, Clock, Store } from "lucide-react";
 import type { TaxaEntregaDTO } from "@/types";
+
+// ─── Tipos de horários ───────────────────────────────────────────────────────
+interface HorarioDia { aberto: boolean; abertura: string; fechamento: string }
+type Horarios = Record<string, HorarioDia>; // "0"=Dom … "6"=Sáb
+
+const DIAS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+function horariosDefault(): Horarios {
+  return Object.fromEntries(
+    DIAS.map((_, i) => [String(i), { aberto: i >= 1 && i <= 6, abertura: "10:00", fechamento: "22:00" }])
+  );
+}
+
+// ─── Seção: Informações da lanchonete ────────────────────────────────────────
+function InfoLanchoneteSection() {
+  const [nome,     setNome]     = useState("");
+  const [cnpj,     setCnpj]     = useState("");
+  const [telefone, setTelefone] = useState("");
+  const [endereco, setEndereco] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [salvo,    setSalvo]    = useState(false);
+
+  useEffect(() => {
+    fetch("/api/configuracoes/lanchonete")
+      .then((r) => r.json())
+      .then((d) => {
+        setNome(d.nome ?? "");
+        setCnpj(d.cnpj ?? "");
+        setTelefone(d.telefone ?? "");
+        setEndereco(d.endereco ?? "");
+      });
+  }, []);
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nome.trim()) return;
+    setSalvando(true);
+    try {
+      await fetch("/api/configuracoes/lanchonete", {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ nome, cnpj: cnpj || null, telefone: telefone || null, endereco: endereco || null }),
+      });
+      setSalvo(true);
+      setTimeout(() => setSalvo(false), 2500);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="card p-5">
+      <div className="flex items-center gap-2 mb-1">
+        <Store size={15} className="text-brand-400" />
+        <h2 className="font-semibold text-white text-sm">Informações do estabelecimento</h2>
+      </div>
+      <p className="text-xs text-gray-500 mb-4">Dados exibidos no cardápio digital.</p>
+
+      <form onSubmit={salvar} className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-400 mb-1.5">Nome *</label>
+            <input
+              type="text"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              className="w-full h-9 bg-dark-700 border border-dark-500 rounded-lg px-3
+                         text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-400 mb-1.5">Telefone</label>
+            <input
+              type="text"
+              value={telefone}
+              onChange={(e) => setTelefone(e.target.value)}
+              placeholder="(11) 99999-9999"
+              className="w-full h-9 bg-dark-700 border border-dark-500 rounded-lg px-3
+                         text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand-500"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-400 mb-1.5">CNPJ</label>
+            <input
+              type="text"
+              value={cnpj}
+              onChange={(e) => setCnpj(e.target.value)}
+              placeholder="00.000.000/0001-00"
+              className="w-full h-9 bg-dark-700 border border-dark-500 rounded-lg px-3
+                         text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-400 mb-1.5">Endereço</label>
+            <input
+              type="text"
+              value={endereco}
+              onChange={(e) => setEndereco(e.target.value)}
+              placeholder="Rua, número, bairro"
+              className="w-full h-9 bg-dark-700 border border-dark-500 rounded-lg px-3
+                         text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand-500"
+            />
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={salvando || !nome.trim()}
+          className="btn-primary text-sm disabled:opacity-50"
+        >
+          {salvando ? <Loader2 size={14} className="animate-spin" /> : salvo ? <Check size={14} /> : null}
+          {salvo ? "Salvo!" : "Salvar informações"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// ─── Seção: Horários de funcionamento ────────────────────────────────────────
+function HorariosSection() {
+  const [horarios, setHorarios] = useState<Horarios>(horariosDefault());
+  const [salvando, setSalvando] = useState(false);
+  const [salvo,    setSalvo]    = useState(false);
+  const [carregou, setCarregou] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/configuracoes/lanchonete")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.horarios && typeof d.horarios === "object") {
+          setHorarios(d.horarios as Horarios);
+        }
+        setCarregou(true);
+      });
+  }, []);
+
+  function atualizar(dia: string, campo: keyof HorarioDia, valor: string | boolean) {
+    setHorarios((prev) => ({
+      ...prev,
+      [dia]: { ...prev[dia], [campo]: valor },
+    }));
+  }
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    setSalvando(true);
+    try {
+      await fetch("/api/configuracoes/lanchonete", {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ horarios }),
+      });
+      setSalvo(true);
+      setTimeout(() => setSalvo(false), 2500);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  if (!carregou) return null;
+
+  return (
+    <div className="card p-5">
+      <div className="flex items-center gap-2 mb-1">
+        <Clock size={15} className="text-brand-400" />
+        <h2 className="font-semibold text-white text-sm">Horários de funcionamento</h2>
+      </div>
+      <p className="text-xs text-gray-500 mb-4">
+        Pedidos fora do horário serão bloqueados no cardápio digital.
+      </p>
+
+      <form onSubmit={salvar} className="space-y-2">
+        {DIAS.map((dia, i) => {
+          const h = horarios[String(i)] ?? { aberto: false, abertura: "10:00", fechamento: "22:00" };
+          return (
+            <div key={i} className="flex items-center gap-3">
+              <span className="w-8 text-xs font-semibold text-gray-400">{dia}</span>
+
+              <button
+                type="button"
+                onClick={() => atualizar(String(i), "aberto", !h.aberto)}
+                className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${h.aberto ? "bg-brand-500" : "bg-dark-600"}`}
+              >
+                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${h.aberto ? "translate-x-4" : "translate-x-0.5"}`} />
+              </button>
+
+              {h.aberto ? (
+                <>
+                  <input
+                    type="time"
+                    value={h.abertura}
+                    onChange={(e) => atualizar(String(i), "abertura", e.target.value)}
+                    className="h-8 w-28 bg-dark-700 border border-dark-600 rounded-lg px-2
+                               text-sm text-white focus:border-brand-500 focus:outline-none"
+                  />
+                  <span className="text-gray-600 text-xs">até</span>
+                  <input
+                    type="time"
+                    value={h.fechamento}
+                    onChange={(e) => atualizar(String(i), "fechamento", e.target.value)}
+                    className="h-8 w-28 bg-dark-700 border border-dark-600 rounded-lg px-2
+                               text-sm text-white focus:border-brand-500 focus:outline-none"
+                  />
+                </>
+              ) : (
+                <span className="text-xs text-gray-600">Fechado</span>
+              )}
+            </div>
+          );
+        })}
+
+        <div className="pt-2">
+          <button
+            type="submit"
+            disabled={salvando}
+            className="btn-primary text-sm disabled:opacity-50"
+          >
+            {salvando ? <Loader2 size={14} className="animate-spin" /> : salvo ? <Check size={14} /> : null}
+            {salvo ? "Salvo!" : "Salvar horários"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
 
 function DeliverySection() {
   const [taxas,    setTaxas]    = useState<TaxaEntregaDTO[]>([]);
@@ -348,6 +576,12 @@ export default function ConfiguracoesPage() {
 
       {/* Lanchonete — somente ADMIN */}
       {role === "ADMIN" && <LogoSection />}
+
+      {/* Informações do estabelecimento — somente ADMIN */}
+      {role === "ADMIN" && <InfoLanchoneteSection />}
+
+      {/* Horários de funcionamento — somente ADMIN */}
+      {role === "ADMIN" && <HorariosSection />}
 
       {/* Delivery — somente ADMIN */}
       {role === "ADMIN" && <DeliverySection />}
