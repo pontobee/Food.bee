@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
     // Bot já notifica pedidos WHATSAPP; painel notifica se houver cliente vinculado
     if (pedido.origem !== "WHATSAPP") {
-      notificarCliente(pedido.id, session.user.lanchonete_id, "AGUARDANDO").catch(console.error);
+      notificarCliente(pedido.id, session!.user.lanchonete_id, "AGUARDANDO").catch(console.error);
     }
 
     return NextResponse.json(pedido, { status: 201 });

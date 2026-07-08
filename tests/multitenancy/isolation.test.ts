@@ -211,12 +211,13 @@ describe("Estoque — isolamento de tenant", () => {
 
   it("movimentarEstoque rejeita produto que não pertence ao tenant", async () => {
     // tx.produto.findFirst retorna null → produto não existe para TENANT_A
-    vi.mocked(prisma.$transaction).mockImplementation(async (fn: (tx: never) => unknown) => {
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => unknown) => {
       const tx = {
         produto:             { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() },
         movimentacaoEstoque: { create:    vi.fn() },
       };
-      return fn(tx);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return fn(tx as any);
     });
 
     await expect(
@@ -229,12 +230,13 @@ describe("Estoque — isolamento de tenant", () => {
 
   it("movimentarEstoque não executa update quando produto não pertence ao tenant", async () => {
     const mockUpdate = vi.fn();
-    vi.mocked(prisma.$transaction).mockImplementation(async (fn: (tx: never) => unknown) => {
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => unknown) => {
       const tx = {
         produto:             { findFirst: vi.fn().mockResolvedValue(null), update: mockUpdate },
         movimentacaoEstoque: { create:    vi.fn() },
       };
-      return fn(tx);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return fn(tx as any);
     });
 
     await expect(
@@ -250,7 +252,7 @@ describe("Estoque — isolamento de tenant", () => {
   it("movimentarEstoque persiste a movimentação com lanchonete_id do contexto", async () => {
     const mockCreate = vi.fn().mockResolvedValue({ id: "mov-1", lanchonete_id: TENANT_A });
 
-    vi.mocked(prisma.$transaction).mockImplementation(async (fn: (tx: never) => unknown) => {
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => unknown) => {
       const tx = {
         produto: {
           findFirst: vi.fn().mockResolvedValue({ id: "prod-1", estoque_atual: 10 }),
@@ -258,7 +260,8 @@ describe("Estoque — isolamento de tenant", () => {
         },
         movimentacaoEstoque: { create: mockCreate },
       };
-      return fn(tx);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return fn(tx as any);
     });
 
     await movimentarEstoque(
