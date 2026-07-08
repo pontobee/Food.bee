@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Plus, Minus, Search, Bike, Store, AlertCircle } from "lucide-react";
-import type { ProdutoDTO, FormaPagamento, ItemAdicionalDTO, TaxaEntregaDTO } from "@/types";
+import { useState, useEffect, useRef } from "react";
+import { X, Plus, Minus, Search, Bike, Store, AlertCircle, User } from "lucide-react";
+import type { ProdutoDTO, FormaPagamento, ItemAdicionalDTO, TaxaEntregaDTO, ClienteDTO } from "@/types";
 
 interface LinhaCarrinho {
   produto:    ProdutoDTO;
@@ -29,11 +29,16 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
   const [carrinho,     setCarrinho]    = useState<LinhaCarrinho[]>([]);
   const [forma,        setForma]       = useState<FormaPagamento>("PIX");
   const [obs,          setObs]         = useState("");
-  const [clienteNome,  setClienteNome] = useState("");
-  const [tipoEntrega,  setTipoEntrega] = useState<"BALCAO" | "DELIVERY">("BALCAO");
-  const [taxaId,       setTaxaId]      = useState<string>("");
-  const [endereco,     setEndereco]    = useState("");
-  const [salvando,     setSalvando]    = useState(false);
+  const [clienteId,    setClienteId]   = useState<string | null>(null);
+  const [clienteBusca, setClienteBusca] = useState("");
+  const [clienteSugestoes, setClienteSugestoes] = useState<ClienteDTO[]>([]);
+  const [clienteSelecionado, setClienteSelecionado] = useState<ClienteDTO | null>(null);
+  const [tipoEntrega,  setTipoEntrega]  = useState<"BALCAO" | "DELIVERY">("BALCAO");
+  const clienteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [taxaId,       setTaxaId]       = useState<string>("");
+  const [endereco,     setEndereco]     = useState("");
+  const [valorRecebido, setValorRecebido] = useState("");
+  const [salvando,     setSalvando]     = useState(false);
   const [erroProd,     setErroProd]    = useState(false);
   const [erroSalvar,   setErroSalvar]  = useState<string | null>(null);
 
@@ -49,6 +54,20 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
       if (Array.isArray(d)) setTaxas(d);
     });
   }, []);
+
+  // Busca de clientes com debounce
+  useEffect(() => {
+    if (clienteTimerRef.current) clearTimeout(clienteTimerRef.current);
+    if (!clienteBusca.trim() || clienteSelecionado) {
+      setClienteSugestoes([]);
+      return;
+    }
+    clienteTimerRef.current = setTimeout(() => {
+      fetch(`/api/clientes?busca=${encodeURIComponent(clienteBusca)}&page=1`)
+        .then((r) => r.json())
+        .then((d) => setClienteSugestoes(d.clientes?.slice(0, 5) ?? []));
+    }, 300);
+  }, [clienteBusca, clienteSelecionado]);
 
   const produtosFiltrados = produtos.filter((p) =>
     p.nome.toLowerCase().includes(busca.toLowerCase())
@@ -117,10 +136,15 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
     setSalvando(true);
     setErroSalvar(null);
     try {
+      const trocoCalc = forma === "DINHEIRO" && valorRecebido
+        ? parseFloat(valorRecebido) - total
+        : null;
+
       const body = {
         forma_pagamento:  forma,
         observacao:       obs || null,
-        cliente_nome:     clienteNome || null,
+        cliente_id:       clienteId ?? null,
+        troco:            trocoCalc !== null && trocoCalc >= 0 ? trocoCalc : null,
         tipo_entrega:     tipoEntrega,
         taxa_entrega_id:  tipoEntrega === "DELIVERY" && taxaId ? taxaId : undefined,
         endereco_entrega: tipoEntrega === "DELIVERY" ? endereco || null : null,
@@ -274,15 +298,51 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
 
             {/* Rodapé do carrinho */}
             <div className="p-3 border-t border-dark-600 space-y-2 shrink-0">
-              <input
-                type="text"
-                placeholder="Nome do cliente (opcional)"
-                value={clienteNome}
-                onChange={(e) => setClienteNome(e.target.value)}
-                className="w-full h-9 bg-dark-700 border border-dark-600 rounded-lg
-                           px-3 text-sm text-white placeholder:text-gray-600
-                           focus:border-brand-500 focus:outline-none"
-              />
+              {/* Busca de cliente */}
+              <div className="relative">
+                {clienteSelecionado ? (
+                  <div className="flex items-center justify-between h-9 bg-dark-700 border border-brand-500/50 rounded-lg px-3 text-sm text-white">
+                    <div className="flex items-center gap-1.5">
+                      <User size={13} className="text-brand-400 shrink-0" />
+                      <span className="truncate">{clienteSelecionado.nome}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setClienteSelecionado(null); setClienteId(null); setClienteBusca(""); }}
+                      className="text-gray-500 hover:text-white ml-2 shrink-0"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      placeholder="Buscar cliente (opcional)"
+                      value={clienteBusca}
+                      onChange={(e) => setClienteBusca(e.target.value)}
+                      className="w-full h-9 bg-dark-700 border border-dark-600 rounded-lg
+                                 px-3 text-sm text-white placeholder:text-gray-600
+                                 focus:border-brand-500 focus:outline-none"
+                    />
+                    {clienteSugestoes.length > 0 && (
+                      <div className="absolute bottom-full left-0 right-0 mb-1 bg-[#1e1e1e] border border-white/10 rounded-lg shadow-xl overflow-hidden z-10">
+                        {clienteSugestoes.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => { setClienteSelecionado(c); setClienteId(c.id); setClienteBusca(""); setClienteSugestoes([]); }}
+                            className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-white/5 transition-colors"
+                          >
+                            <span className="text-white">{c.nome}</span>
+                            <span className="text-gray-500 text-xs">{c.telefone}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
 
               {/* Tipo de entrega */}
               <div className="flex gap-1.5">
@@ -369,6 +429,27 @@ export function NovoPedidoModal({ onClose, onSalvo }: Props) {
                   </button>
                 ))}
               </div>
+
+              {/* Troco (apenas DINHEIRO) */}
+              {forma === "DINHEIRO" && (
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-500">Valor recebido (R$)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="0,00"
+                    value={valorRecebido}
+                    onChange={(e) => setValorRecebido(e.target.value)}
+                    className="input text-sm w-full"
+                  />
+                  {valorRecebido && parseFloat(valorRecebido) >= total && (
+                    <p className="text-xs text-emerald-400 font-semibold">
+                      Troco: R$ {(parseFloat(valorRecebido) - total).toFixed(2).replace(".", ",")}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {erroSalvar && (
                 <div className="flex items-center gap-2 text-red-400 text-xs">

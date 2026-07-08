@@ -8,9 +8,11 @@ import {
   LayoutDashboard,
   ClipboardList,
   Package,
+  BookOpen,
   DollarSign,
   MessageSquare,
   Users,
+  Contact,
   Settings,
 } from "lucide-react";
 
@@ -18,10 +20,12 @@ import {
 const NAV = [
   { href: "/dashboard",               label: "Visão Geral", icon: LayoutDashboard },
   { href: "/dashboard/pedidos",       label: "Pedidos",     icon: ClipboardList   },
+  { href: "/dashboard/produtos",      label: "Cardápio",    icon: BookOpen,      adminOnly: true },
   { href: "/dashboard/estoque",       label: "Estoque",     icon: Package         },
-  { href: "/dashboard/financeiro",    label: "Financeiro",  icon: DollarSign      },
-  { href: "/dashboard/whatsapp",      label: "WhatsApp",    icon: MessageSquare   },
-  { href: "/dashboard/equipe",        label: "Equipe",      icon: Users, adminOnly: true },
+  { href: "/dashboard/financeiro",    label: "Financeiro",  icon: DollarSign,   adminOnly: true },
+  { href: "/dashboard/clientes",      label: "Clientes",    icon: Contact,       adminOnly: true },
+  { href: "/dashboard/whatsapp",      label: "WhatsApp",    icon: MessageSquare                 },
+  { href: "/dashboard/equipe",        label: "Equipe",      icon: Users,         adminOnly: true },
   { href: "/dashboard/configuracoes", label: "Config.",     icon: Settings        },
 ] as const;
 

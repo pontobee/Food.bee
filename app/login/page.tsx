@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { signIn }                    from "next-auth/react";
 import { useRouter }                 from "next/navigation";
+import Link                          from "next/link";
 import { UtensilsCrossed, Mail, Lock, AlertCircle, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
@@ -81,9 +82,12 @@ export default function LoginPage() {
 
             {/* Senha */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                Senha
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-medium text-gray-300">Senha</label>
+                <Link href="/forgot-password" className="text-xs text-brand-400 hover:text-brand-300 transition-colors">
+                  Esqueci minha senha
+                </Link>
+              </div>
               <div className="relative">
                 <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input
@@ -122,6 +126,13 @@ export default function LoginPage() {
 
           </form>
         </div>
+
+        <p className="text-center text-sm text-gray-500 mt-4">
+          Não tem uma conta?{" "}
+          <Link href="/signup" className="text-brand-400 hover:text-brand-300 transition-colors">
+            Criar conta grátis
+          </Link>
+        </p>
 
       </div>
     </main>

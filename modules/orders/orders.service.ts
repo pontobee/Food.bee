@@ -24,10 +24,12 @@ export interface CriarPedidoInput {
   itens?:            ItemInput[];
   forma_pagamento?:  string;
   origem?:           string;
+  cliente_id?:       string | null;
   observacao?:       string | null;
   tipo_entrega?:     string;
   taxa_entrega_id?:  string;
   endereco_entrega?: string | null;
+  troco?:            number | null;
 }
 
 export interface AtualizarStatusInput {
@@ -94,6 +96,16 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
     where: { id: { in: produtoIds }, lanchonete_id: lid, inativo_em: null },
   });
   const produtoMap = new Map(produtos.map((p) => [p.id, p]));
+
+  // 2b. Validação de estoque (apenas produtos com controlar_estoque = true)
+  for (const item of itensInput) {
+    const produto = produtoMap.get(item.produto_id!);
+    if (produto?.controlar_estoque && produto.estoque_atual < (item.quantidade ?? 1)) {
+      throw new OrderValidationError(
+        `"${produto.nome}" sem estoque suficiente (disponível: ${produto.estoque_atual})`
+      );
+    }
+  }
 
   const adicionalIds = [
     ...new Set(
@@ -182,6 +194,7 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
     data: {
       lanchonete_id:   lid,
       usuario_id:      uid,
+      cliente_id:      input.cliente_id ?? null,
       numero_pedido:   numeroPedido,
       forma_pagamento: input.forma_pagamento as FormaPagamento,
       origem:          (input.origem as OrigemPedido) ?? "BALCAO",
@@ -193,6 +206,11 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
       subtotal,
       desconto:        0,
       total,
+      troco:           input.troco ?? null,
+      // Pagamentos imediatos (dinheiro/cartão) são marcados como pagos na criação
+      pago_em: ["DINHEIRO", "CARTAO_DEBITO", "CARTAO_CREDITO"].includes(input.forma_pagamento ?? "")
+        ? new Date()
+        : null,
       itens: { create: itensData },
     },
     include: {
@@ -230,17 +248,33 @@ export async function updateOrderStatus(
 
   // Cria transação de receita ao entregar (apenas na transição para ENTREGUE)
   if (input.status === "ENTREGUE" && pedido.status !== "ENTREGUE") {
-    await prisma.transacao.create({
-      data: {
-        lanchonete_id: lid,
-        pedido_id:     id,
-        usuario_id:    uid,
-        tipo:          "RECEITA",
-        categoria:     "Venda",
-        descricao:     `Pedido #${pedido.numero_pedido}`,
-        valor:         pedido.total,
-      },
-    });
+    const ops: Promise<unknown>[] = [
+      prisma.transacao.create({
+        data: {
+          lanchonete_id: lid,
+          pedido_id:     id,
+          usuario_id:    uid,
+          tipo:          "RECEITA",
+          categoria:     "Venda",
+          descricao:     `Pedido #${pedido.numero_pedido}`,
+          valor:         pedido.total,
+        },
+      }),
+    ];
+
+    if (pedido.cliente_id) {
+      ops.push(
+        prisma.cliente.update({
+          where: { id: pedido.cliente_id },
+          data: {
+            total_pedidos: { increment: 1 },
+            total_gasto:   { increment: pedido.total },
+          },
+        })
+      );
+    }
+
+    await Promise.all(ops);
   }
 
   return atualizado;

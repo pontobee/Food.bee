@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { authGuard } from "@/lib/auth-guards";
 import { updateOrderStatus } from "@/modules/orders/orders.service";
 import { OrderNotFoundError, OrderValidationError } from "@/modules/orders/orders.errors";
+import { notificarCliente } from "@/modules/whatsapp/notificacoes.service";
 
 const patchSchema = z.object({
   status:              z.enum(["AGUARDANDO", "EM_PREPARO", "PRONTO", "ENTREGUE", "CANCELADO"]),
@@ -38,6 +39,10 @@ export async function PATCH(
       lanchoneteId: session!.user.lanchonete_id,
       usuarioId:    session!.user.id!,
     });
+
+    // Fire-and-forget: falha de WhatsApp não deve travar a resposta
+    notificarCliente(id, session!.user.lanchonete_id, parsed.data.status).catch(console.error);
+
     return NextResponse.json(atualizado);
   } catch (err) {
     if (err instanceof OrderNotFoundError) {

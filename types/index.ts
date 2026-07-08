@@ -51,8 +51,9 @@ export interface PedidoDTO {
   desconto:         number;
   total:            number;
   troco:            number | null;
-  observacao:       string | null;
-  pago_em:          string | null;
+  observacao:            string | null;
+  motivo_cancelamento:   string | null;
+  pago_em:               string | null;
   tipo_entrega:     TipoEntrega;
   taxa_entrega:     number | null;
   endereco_entrega: string | null;
@@ -63,17 +64,18 @@ export interface PedidoDTO {
 }
 
 export interface ProdutoDTO {
-  id:            string;
-  nome:          string;
-  descricao:     string | null;
-  preco_venda:   number;
-  preco_custo:   number;
-  estoque_atual: number;
-  estoque_minimo: number;
-  unidade:       string;
-  imagem_url:    string | null;
-  categoria:     { id: string; nome: string } | null;
-  adicionais:    { id: string; nome: string; tipo: TipoAdicional; preco_extra: number }[];
+  id:                string;
+  nome:              string;
+  descricao:         string | null;
+  preco_venda:       number;
+  preco_custo:       number;
+  estoque_atual:     number;
+  estoque_minimo:    number;
+  controlar_estoque: boolean;
+  unidade:           string;
+  imagem_url:        string | null;
+  categoria:         { id: string; nome: string } | null;
+  adicionais:        { id: string; nome: string; tipo: TipoAdicional; preco_extra: number }[];
 }
 
 // Membro da equipe — retorno de GET /api/equipe.
@@ -105,4 +107,40 @@ export interface ChartsDTO {
   faturamento7d: ChartDataPoint[];
   top5Produtos:  { nome: string; quantidade: number }[];
   pagamentos:    { name: string; value: number }[];
+}
+
+export type TipoTransacao = "RECEITA" | "DESPESA";
+
+export interface TransacaoDTO {
+  id:           string;
+  tipo:         TipoTransacao;
+  categoria:    string;
+  descricao:    string;
+  valor:        number;
+  data:         string;
+  pedido_id:    string | null;
+  usuario_nome: string;
+  criado_em:    string;
+}
+
+export interface TransacoesPageDTO {
+  transacoes: TransacaoDTO[];
+  total:      number;
+  paginas:    number;
+}
+
+export interface ClienteDTO {
+  id:            string;
+  nome:          string;
+  telefone:      string;
+  endereco:      string | null;
+  total_pedidos: number;
+  total_gasto:   number;
+  criado_em:     string;
+}
+
+export interface ClientesPageDTO {
+  clientes: ClienteDTO[];
+  total:    number;
+  paginas:  number;
 }

@@ -9,6 +9,7 @@ export interface ProdutoInput {
   preco_custo?: number;
   estoque_atual?: number;
   estoque_minimo?: number;
+  controlar_estoque?: boolean;
   unidade?: string;
   imagem_url?: string;
 }
