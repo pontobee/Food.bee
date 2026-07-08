@@ -43,7 +43,7 @@ const PLANOS = [
   {
     id: "PRO" as PlanoId,
     nome: "Pro",
-    preco: 179.9,
+    preco: 119.9,
     descricao: "Para lanchonetes em crescimento",
     destaque: true,
     recursos: [

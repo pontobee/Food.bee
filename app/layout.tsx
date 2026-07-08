@@ -4,12 +4,23 @@ import { ErrorBoundary }  from "@/components/ErrorBoundary";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title:       "LancheSmart — Gestão de Lanchonetes",
-  description: "Controle de pedidos, estoque, financeiro e WhatsApp em uma plataforma.",
+  metadataBase: new URL(process.env.APP_URL ?? "https://lanchesmart.com.br"),
+  title: {
+    default:  "LancheSmart — Gestão de Lanchonetes",
+    template: "%s | LancheSmart",
+  },
+  description: "Gerencie pedidos, estoque, financeiro e WhatsApp em uma plataforma. Gestão completa para lanchonetes e restaurantes.",
   openGraph: {
-    title:       "LancheSmart",
-    description: "SaaS completo para lanchonetes",
+    title:       "LancheSmart — Gestão de Lanchonetes",
+    description: "Gerencie pedidos, estoque, financeiro e WhatsApp em uma plataforma.",
     type:        "website",
+    locale:      "pt_BR",
+    siteName:    "LancheSmart",
+  },
+  twitter: {
+    card:        "summary_large_image",
+    title:       "LancheSmart — Gestão de Lanchonetes",
+    description: "Gerencie pedidos, estoque, financeiro e WhatsApp em uma plataforma.",
   },
 };
 
