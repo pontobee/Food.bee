@@ -3,7 +3,6 @@ import { SignJWT }                   from "jose";
 import { Resend }                    from "resend";
 import { prisma }                    from "@/lib/prisma";
 
-const resend   = new Resend(process.env.RESEND_API_KEY);
 const secret   = new TextEncoder().encode(process.env.AUTH_SECRET!);
 const FROM     = process.env.RESEND_FROM ?? "LancheSmart <noreply@lanchesmart.com.br>";
 const APP_URL  = process.env.APP_URL ?? process.env.NEXTAUTH_URL ?? "http://localhost:3000";
@@ -29,6 +28,7 @@ export async function POST(req: NextRequest) {
       .sign(secret);
 
     const link = `${APP_URL}/reset-password/${encodeURIComponent(token)}`;
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
     await resend.emails.send({
       from:    FROM,

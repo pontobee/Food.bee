@@ -40,6 +40,7 @@ vi.mock("@/lib/prisma", () => ({
     },
     movimentacaoEstoque: { findMany: vi.fn() },
     $queryRaw:     vi.fn(),
+    $executeRaw:   vi.fn(),
     $transaction:  vi.fn(),
   },
 }));
