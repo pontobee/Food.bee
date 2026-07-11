@@ -56,13 +56,18 @@ enum FormaPagamento {
   CARTAO_DEBITO
   CARTAO_CREDITO
   PIX
-  FIADO // crédito interno controlado pelo admin
 }
 
 enum OrigemPedido {
   BALCAO
   WHATSAPP
   TELEFONE
+  CARDAPIO_DIGITAL
+}
+
+enum TipoEntrega {
+  BALCAO
+  DELIVERY
 }
 
 enum TipoAdicional {
@@ -94,7 +99,10 @@ enum StatusWebhook {
 
 enum TipoMensagemWhatsApp {
   CONFIRMACAO_PEDIDO
+  PEDIDO_AGUARDANDO
+  PEDIDO_EM_PREPARO
   PEDIDO_PRONTO
+  PEDIDO_ENTREGUE
   PEDIDO_CANCELADO
   COBRANCA
   PROMO
@@ -121,11 +129,16 @@ model Lanchonete {
   cnpj       String?   @unique @db.VarChar(18)
   endereco   String?
   logo_url   String?
+  horarios   Json?     // { "0": { aberto, abertura, fechamento }, … } 0=Dom…6=Sáb
   criado_em  DateTime  @default(now()) @db.Timestamptz(3)
   inativo_em DateTime? @db.Timestamptz(3) // soft delete
 
   // relações
   assinatura       Assinatura?
+  pix_config       PixConfig?
+  whatsapp_config  WhatsAppConfig?
+  sessoes_whatsapp SessaoWhatsApp[]
+  taxas_entrega    TaxaEntrega[]
   usuarios         Usuario[]
   clientes         Cliente[]
   categorias       Categoria[]
@@ -255,8 +268,9 @@ model Produto {
   descricao       String?
   preco_venda     Decimal   @db.Decimal(10, 2)
   preco_custo     Decimal   @default(0) @db.Decimal(10, 2) // somente ADMIN visualiza
-  estoque_atual   Int       @default(0)
-  estoque_minimo  Int       @default(0) // alerta de estoque baixo
+  estoque_atual      Int     @default(0)
+  estoque_minimo     Int     @default(0) // alerta de estoque baixo
+  controlar_estoque  Boolean @default(false)
   unidade         String    @default("un") @db.VarChar(10)
   imagem_url      String?
   criado_em       DateTime  @default(now()) @db.Timestamptz(3)
@@ -319,15 +333,23 @@ model Pedido {
   troco           Decimal?       @db.Decimal(10, 2) // apenas para DINHEIRO
   observacao      String?
   motivo_cancelamento String?
-  criado_em       DateTime       @default(now()) @db.Timestamptz(3)
+  pago_em          DateTime?      @db.Timestamptz(3)
+  pix_txid         String?        @db.VarChar(255)
+  pix_qrcode       String?        @db.Text
+  tipo_entrega     TipoEntrega    @default(BALCAO)
+  taxa_entrega_id  String?        @db.Uuid
+  taxa_entrega     Decimal?       @db.Decimal(8, 2) // snapshot do valor no momento do pedido
+  endereco_entrega String?        @db.VarChar(255)
+  criado_em        DateTime       @default(now()) @db.Timestamptz(3)
   atualizado_em   DateTime       @updatedAt @db.Timestamptz(3)
   inativo_em      DateTime?      @db.Timestamptz(3)
 
-  lanchonete Lanchonete   @relation(fields: [lanchonete_id], references: [id])
-  cliente    Cliente?     @relation(fields: [cliente_id], references: [id])
-  usuario    Usuario      @relation(fields: [usuario_id], references: [id])
-  itens      ItemPedido[]
-  transacao  Transacao?   // gerada automaticamente ao finalizar
+  lanchonete   Lanchonete    @relation(fields: [lanchonete_id], references: [id])
+  cliente      Cliente?      @relation(fields: [cliente_id], references: [id])
+  usuario      Usuario       @relation(fields: [usuario_id], references: [id])
+  zona_entrega TaxaEntrega?  @relation(fields: [taxa_entrega_id], references: [id])
+  itens        ItemPedido[]
+  transacao    Transacao?
 
   // numero_pedido único por tenant
   @@unique([lanchonete_id, numero_pedido])
@@ -443,6 +465,89 @@ model MovimentacaoEstoque {
   @@index([lanchonete_id, produto_id])
   @@index([lanchonete_id, criado_em(sort: Desc)])
   @@map("movimentacoes_estoque")
+}
+
+// =============================================================================
+// TAXA_ENTREGA — zonas/bairros com taxas de delivery por tenant
+// =============================================================================
+
+model TaxaEntrega {
+  id            String    @id @default(uuid()) @db.Uuid
+  lanchonete_id String    @db.Uuid
+  nome          String    @db.VarChar(80)  // "Centro", "Bairro Norte", etc.
+  taxa          Decimal   @db.Decimal(8, 2)
+  tempo_min     Int?      // tempo estimado de entrega em minutos
+  ativa         Boolean   @default(true)
+  criado_em     DateTime  @default(now()) @db.Timestamptz(3)
+  atualizado_em DateTime  @updatedAt @db.Timestamptz(3)
+
+  lanchonete Lanchonete @relation(fields: [lanchonete_id], references: [id])
+  pedidos    Pedido[]
+
+  @@index([lanchonete_id, ativa])
+  @@map("taxas_entrega")
+}
+
+// =============================================================================
+// PIX_CONFIG — credenciais do gateway Pix por tenant (Mercado Pago)
+// access_token: APP_USR-... (produção) ou TEST-... (sandbox)
+// =============================================================================
+
+model PixConfig {
+  id            String           @id @default(uuid()) @db.Uuid
+  lanchonete_id String           @unique @db.Uuid
+  gateway       GatewayPagamento @default(MERCADO_PAGO)
+  access_token  String           @db.Text
+  criado_em     DateTime         @default(now()) @db.Timestamptz(3)
+  atualizado_em DateTime         @updatedAt @db.Timestamptz(3)
+
+  lanchonete Lanchonete @relation(fields: [lanchonete_id], references: [id])
+
+  @@map("pix_configs")
+}
+
+// =============================================================================
+// WHATSAPP_CONFIG — credenciais da Evolution API por tenant
+// evolution_url: URL base do container (ex: https://evolution.meusite.com)
+// evolution_api_key: chave global da instância Evolution
+// instance_nome: nome da instância criada para esta lanchonete
+// =============================================================================
+
+model WhatsAppConfig {
+  id              String   @id @default(uuid()) @db.Uuid
+  lanchonete_id   String   @unique @db.Uuid
+  evolution_url   String   @db.VarChar(255)
+  evolution_api_key String @db.Text
+  instance_nome   String   @db.VarChar(100)
+  criado_em       DateTime @default(now()) @db.Timestamptz(3)
+  atualizado_em   DateTime @updatedAt @db.Timestamptz(3)
+
+  lanchonete Lanchonete @relation(fields: [lanchonete_id], references: [id])
+
+  @@map("whatsapp_configs")
+}
+
+// =============================================================================
+// SESSAO_WHATSAPP — estado da conversa do bot por cliente
+// estado: MENU | CARRINHO | TIPO_ENTREGA | ENDERECO | PAGAMENTO
+// dados:  JSON com carrinho, tipo_entrega, endereco_entrega, menu_map
+// Expira após inatividade — expirada é tratada como sessão nova.
+// =============================================================================
+
+model SessaoWhatsApp {
+  id            String   @id @default(uuid()) @db.Uuid
+  lanchonete_id String   @db.Uuid
+  telefone      String   @db.VarChar(20)
+  estado        String   @db.VarChar(30)
+  dados         Json     @default("{}")
+  expira_em     DateTime @db.Timestamptz(3)
+  atualizado_em DateTime @updatedAt @db.Timestamptz(3)
+
+  lanchonete Lanchonete @relation(fields: [lanchonete_id], references: [id])
+
+  @@unique([lanchonete_id, telefone])
+  @@index([expira_em])
+  @@map("sessoes_whatsapp")
 }
 
 // =============================================================================

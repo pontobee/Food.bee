@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  Banknote, CreditCard, QrCode, Clock, ChevronRight, X,
+  Banknote, CreditCard, QrCode, ChevronRight, X, CheckCircle2, Bike, AlertTriangle,
 } from "lucide-react";
 import type { PedidoDTO, FormaPagamento, StatusPedido } from "@/types";
-import { atualizarStatus } from "@/hooks/usePedidos";
+import { atualizarStatus }  from "@/hooks/usePedidos";
+import { ModalPix }         from "@/components/pedidos/ModalPix";
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -30,7 +31,6 @@ const FOP_ICON: Record<FormaPagamento, React.ReactNode> = {
   CARTAO_DEBITO:  <CreditCard size={14} />,
   CARTAO_CREDITO: <CreditCard size={14} />,
   PIX:            <QrCode    size={14} />,
-  FIADO:          <Clock     size={14} />,
 };
 
 const FOP_LABEL: Record<FormaPagamento, string> = {
@@ -38,7 +38,6 @@ const FOP_LABEL: Record<FormaPagamento, string> = {
   CARTAO_DEBITO:  "Débito",
   CARTAO_CREDITO: "Crédito",
   PIX:            "PIX",
-  FIADO:          "Fiado",
 };
 
 const PROXIMOS: Partial<Record<StatusPedido, StatusPedido>> = {
@@ -46,6 +45,50 @@ const PROXIMOS: Partial<Record<StatusPedido, StatusPedido>> = {
   EM_PREPARO: "PRONTO",
   PRONTO:     "ENTREGUE",
 };
+
+// ── Modal de cancelamento ─────────────────────────────────
+
+interface CancelModalProps {
+  onConfirmar: (motivo: string) => void;
+  onFechar:    () => void;
+  loading:     boolean;
+}
+
+function CancelModal({ onConfirmar, onFechar, loading }: CancelModalProps) {
+  const [motivo, setMotivo] = useState("");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <div className="bg-dark-800 border border-dark-600 rounded-2xl p-5 w-full max-w-sm shadow-xl">
+        <div className="flex items-center gap-2 mb-3">
+          <AlertTriangle size={18} className="text-red-400 shrink-0" />
+          <h2 className="font-semibold text-white text-sm">Cancelar pedido</h2>
+        </div>
+        <p className="text-xs text-gray-500 mb-3">Informe o motivo do cancelamento.</p>
+        <textarea
+          className="input resize-none text-sm w-full"
+          rows={3}
+          placeholder="Ex: cliente desistiu, item indisponível…"
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          autoFocus
+        />
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={() => { if (motivo.trim()) onConfirmar(motivo.trim()); }}
+            disabled={!motivo.trim() || loading}
+            className="flex-1 btn-primary text-sm disabled:opacity-50"
+          >
+            {loading ? "Cancelando…" : "Confirmar cancelamento"}
+          </button>
+          <button onClick={onFechar} className="btn-ghost text-sm px-4">
+            Voltar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Componente ───────────────────────────────────────────
 
@@ -55,21 +98,22 @@ interface Props {
 }
 
 export function PedidoCard({ pedido, onMutate }: Props) {
-  const [minutos, setMinutos]     = useState(() => minutosDesde(pedido.criado_em));
-  const [loading, setLoading]     = useState<StatusPedido | null>(null);
-  const [erro,    setErro]        = useState<string | null>(null);
+  const [minutos,      setMinutos]      = useState(() => minutosDesde(pedido.criado_em));
+  const [loading,      setLoading]      = useState<StatusPedido | null>(null);
+  const [erro,         setErro]         = useState<string | null>(null);
+  const [pixAberto,    setPixAberto]    = useState(false);
+  const [cancelModal,  setCancelModal]  = useState(false);
 
-  // Atualiza o timer a cada minuto
   useEffect(() => {
     const id = setInterval(() => setMinutos(minutosDesde(pedido.criado_em)), 60_000);
     return () => clearInterval(id);
   }, [pedido.criado_em]);
 
-  const avancar = useCallback(async (status: StatusPedido) => {
+  const avancar = useCallback(async (status: StatusPedido, motivo_cancelamento?: string) => {
     setLoading(status);
     setErro(null);
     try {
-      await atualizarStatus(pedido.id, status);
+      await atualizarStatus(pedido.id, status, motivo_cancelamento);
       onMutate();
     } catch {
       setErro("Falha ao atualizar pedido. Tente novamente.");
@@ -78,111 +122,178 @@ export function PedidoCard({ pedido, onMutate }: Props) {
     }
   }, [pedido.id, onMutate]);
 
+  const confirmarCancelamento = useCallback(async (motivo: string) => {
+    await avancar("CANCELADO", motivo);
+    setCancelModal(false);
+  }, [avancar]);
+
   const proximo = PROXIMOS[pedido.status];
 
   return (
-    <article className="bg-dark-700 border border-dark-600 rounded-xl p-3
-                        hover:border-dark-500 transition-colors">
+    <>
+      <article className="bg-dark-700 border border-dark-600 rounded-xl p-3
+                          hover:border-dark-500 transition-colors">
 
-      {/* Linha 1: número + FOP */}
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-2xl font-black text-white leading-none">
-          #{pedido.numero_pedido}
-        </span>
-        <span className={`
-          flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold
-          ${pedido.forma_pagamento === "PIX"
-            ? "bg-emerald-500/15 text-emerald-400"
-            : pedido.forma_pagamento === "DINHEIRO"
-            ? "bg-blue-500/15 text-blue-400"
-            : "bg-purple-500/15 text-purple-400"}
-        `}>
-          {FOP_ICON[pedido.forma_pagamento]}
-          {FOP_LABEL[pedido.forma_pagamento]}
-        </span>
-      </div>
-
-      {/* Linha 2: cliente */}
-      <p className="text-sm text-gray-300 truncate mb-2">
-        {pedido.cliente?.nome ?? "Cliente balcão"}
-      </p>
-
-      {/* Itens com adicionais em negrito */}
-      <div className="space-y-1 mb-3">
-        {pedido.itens.map((item) => (
-          <div key={item.id} className="text-xs">
-            <span className="text-gray-400">
-              {item.quantidade}× {item.produto_nome}
-            </span>
-            {item.adicionais.length > 0 && (
-              <div className="pl-3 mt-0.5 space-y-0.5">
-                {item.adicionais.map((ad) => (
-                  <span
-                    key={ad.id}
-                    className={`block font-bold ${
-                      ad.tipo === "ADICIONAL" ? "text-brand-400" : "text-red-400"
-                    }`}
-                  >
-                    {ad.tipo === "ADICIONAL" ? "+" : "−"} {ad.nome}
-                  </span>
-                ))}
-              </div>
+        {/* Linha 1: número + FOP */}
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-2xl font-black text-white leading-none">
+            #{pedido.numero_pedido}
+          </span>
+          <div className="flex items-center gap-1.5">
+            {pedido.pago_em && (
+              <span className="flex items-center gap-1 text-xs text-emerald-400 font-semibold">
+                <CheckCircle2 size={12} />
+                Pago
+              </span>
             )}
+            <span className={`
+              flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold
+              ${pedido.forma_pagamento === "PIX"
+                ? "bg-emerald-500/15 text-emerald-400"
+                : pedido.forma_pagamento === "DINHEIRO"
+                ? "bg-blue-500/15 text-blue-400"
+                : "bg-purple-500/15 text-purple-400"}
+            `}>
+              {FOP_ICON[pedido.forma_pagamento]}
+              {FOP_LABEL[pedido.forma_pagamento]}
+            </span>
           </div>
-        ))}
-        {pedido.observacao && (
-          <p className="text-xs text-amber-400 font-medium mt-1">
-            ⚠ {pedido.observacao}
+        </div>
+
+        {/* Linha 2: cliente + badge delivery */}
+        <div className="flex items-center gap-2 mb-2">
+          <p className="text-sm text-gray-300 truncate flex-1">
+            {pedido.cliente?.nome ?? "Cliente balcão"}
           </p>
-        )}
-      </div>
-
-      {/* Rodapé: timer + total */}
-      <div className="flex items-center justify-between pt-2 border-t border-dark-600">
-        <span className={`text-xs ${timerClasse(minutos, pedido.status)}`}>
-          {formatarMinutos(minutos)}
-        </span>
-        <span className="text-sm font-bold text-white">
-          R$ {Number(pedido.total).toFixed(2).replace(".", ",")}
-        </span>
-      </div>
-
-      {/* Erro de atualização */}
-      {erro && (
-        <p className="text-xs text-red-400 mt-2 text-center">{erro}</p>
-      )}
-
-      {/* Ações */}
-      {(proximo || pedido.status === "AGUARDANDO" || pedido.status === "EM_PREPARO" || pedido.status === "PRONTO") && (
-        <div className="flex gap-2 mt-2">
-          {proximo && (
-            <button
-              onClick={() => avancar(proximo)}
-              disabled={!!loading}
-              className="flex-1 flex items-center justify-center gap-1
-                         min-h-[44px] bg-brand-500 hover:bg-brand-600
-                         text-white text-xs font-semibold rounded-lg
-                         transition-colors disabled:opacity-50"
-            >
-              {loading === proximo
-                ? "…"
-                : <><ChevronRight size={14} /> {proximo.replace("_", " ")}</>}
-            </button>
-          )}
-          {pedido.status !== "CANCELADO" && pedido.status !== "ENTREGUE" && (
-            <button
-              onClick={() => avancar("CANCELADO")}
-              disabled={!!loading}
-              className="flex items-center justify-center min-h-[44px] min-w-[44px]
-                         bg-red-500/15 hover:bg-red-500/25 text-red-400
-                         rounded-lg transition-colors disabled:opacity-50"
-              title="Cancelar"
-            >
-              {loading === "CANCELADO" ? "…" : <X size={14} />}
-            </button>
+          {pedido.tipo_entrega === "DELIVERY" && (
+            <span className="shrink-0 flex items-center gap-1 text-xs font-semibold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">
+              <Bike size={11} /> Delivery
+            </span>
           )}
         </div>
+
+        {/* Endereço de entrega */}
+        {pedido.tipo_entrega === "DELIVERY" && pedido.endereco_entrega && (
+          <p className="text-xs text-amber-300/70 mb-2 leading-snug">
+            📍 {pedido.endereco_entrega}
+          </p>
+        )}
+
+        {/* Itens com adicionais */}
+        <div className="space-y-1 mb-3">
+          {pedido.itens.map((item) => (
+            <div key={item.id} className="text-xs">
+              <span className="text-gray-400">
+                {item.quantidade}× {item.produto_nome}
+              </span>
+              {item.adicionais.length > 0 && (
+                <div className="pl-3 mt-0.5 space-y-0.5">
+                  {item.adicionais.map((ad) => (
+                    <span
+                      key={ad.id}
+                      className={`block font-bold ${
+                        ad.tipo === "ADICIONAL" ? "text-brand-400" : "text-red-400"
+                      }`}
+                    >
+                      {ad.tipo === "ADICIONAL" ? "+" : "−"} {ad.nome}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+          {pedido.observacao && (
+            <p className="text-xs text-amber-400 font-medium mt-1">
+              ⚠ {pedido.observacao}
+            </p>
+          )}
+        </div>
+
+        {/* Motivo de cancelamento */}
+        {pedido.status === "CANCELADO" && pedido.motivo_cancelamento && (
+          <p className="text-xs text-red-400/80 bg-red-500/10 rounded-lg px-2 py-1.5 mb-3 leading-snug">
+            Cancelado: {pedido.motivo_cancelamento}
+          </p>
+        )}
+
+        {/* Rodapé: timer + total */}
+        <div className="flex items-center justify-between pt-2 border-t border-dark-600">
+          <span className={`text-xs ${timerClasse(minutos, pedido.status)}`}>
+            {formatarMinutos(minutos)}
+          </span>
+          <span className="text-sm font-bold text-white">
+            R$ {Number(pedido.total).toFixed(2).replace(".", ",")}
+          </span>
+        </div>
+
+        {/* Ações */}
+        {(proximo || pedido.status === "AGUARDANDO" || pedido.status === "EM_PREPARO" || pedido.status === "PRONTO") && (
+          <div className="flex gap-2 mt-2">
+            {pedido.forma_pagamento === "PIX" &&
+             !pedido.pago_em &&
+             pedido.status !== "CANCELADO" &&
+             pedido.status !== "ENTREGUE" && (
+              <button
+                onClick={() => setPixAberto(true)}
+                className="flex items-center justify-center min-h-[44px] min-w-[44px]
+                           bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400
+                           rounded-lg transition-colors"
+                title="Ver QR Code Pix"
+              >
+                <QrCode size={14} />
+              </button>
+            )}
+
+            {proximo && (
+              <button
+                onClick={() => avancar(proximo)}
+                disabled={!!loading}
+                className="flex-1 flex items-center justify-center gap-1
+                           min-h-[44px] bg-brand-500 hover:bg-brand-600
+                           text-white text-xs font-semibold rounded-lg
+                           transition-colors disabled:opacity-50"
+              >
+                {loading === proximo
+                  ? "…"
+                  : <><ChevronRight size={14} /> {proximo.replace("_", " ")}</>}
+              </button>
+            )}
+
+            {pedido.status !== "CANCELADO" && pedido.status !== "ENTREGUE" && (
+              <button
+                onClick={() => setCancelModal(true)}
+                disabled={!!loading}
+                className="flex items-center justify-center min-h-[44px] min-w-[44px]
+                           bg-red-500/15 hover:bg-red-500/25 text-red-400
+                           rounded-lg transition-colors disabled:opacity-50"
+                title="Cancelar pedido"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {erro && (
+          <p className="text-xs text-red-400 mt-2 text-center">{erro}</p>
+        )}
+      </article>
+
+      {pixAberto && (
+        <ModalPix
+          pedidoId={pedido.id}
+          numeroPedido={pedido.numero_pedido}
+          onClose={() => { setPixAberto(false); onMutate(); }}
+        />
       )}
-    </article>
+
+      {cancelModal && (
+        <CancelModal
+          onConfirmar={confirmarCancelamento}
+          onFechar={() => setCancelModal(false)}
+          loading={loading === "CANCELADO"}
+        />
+      )}
+    </>
   );
 }

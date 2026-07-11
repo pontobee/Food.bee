@@ -15,8 +15,17 @@ export const authConfig = {
       const isPublic =
         pathname === "/" ||
         pathname.startsWith("/login") ||
+        pathname.startsWith("/signup") ||
+        pathname.startsWith("/forgot-password") ||
+        pathname.startsWith("/reset-password") ||
+        pathname.startsWith("/api/signup") ||
+        pathname.startsWith("/api/auth/forgot-password") ||
+        pathname.startsWith("/api/auth/reset-password") ||
         pathname.startsWith("/api/auth") ||
         pathname.startsWith("/api/eventos") ||
+        pathname.startsWith("/api/public/") ||
+        pathname.startsWith("/api/webhooks/") ||
+        pathname.startsWith("/cardapio/") ||
         pathname.startsWith("/preview");
 
       if (isPublic) return true;
@@ -29,24 +38,6 @@ export const authConfig = {
       }
 
       return true;
-    },
-    jwt({ token, user }) {
-      if (user) {
-        const u = user as Record<string, unknown>;
-        token.lanchonete_id     = u.lanchonete_id;
-        token.lanchonete_nome   = u.lanchonete_nome;
-        token.role              = u.role as "ADMIN" | "CAIXA";
-        token.assinatura_status = u.assinatura_status;
-      }
-      return token;
-    },
-    session({ session, token }) {
-      session.user.id                = token.sub               as string;
-      session.user.lanchonete_id     = token.lanchonete_id     as string;
-      session.user.lanchonete_nome   = token.lanchonete_nome   as string;
-      session.user.role              = token.role              as "ADMIN" | "CAIXA";
-      session.user.assinatura_status = token.assinatura_status as string;
-      return session;
     },
   },
 } satisfies NextAuthConfig;

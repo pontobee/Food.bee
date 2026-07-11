@@ -1,4 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title:       "LancheSmart — Sistema de Gestão para Lanchonetes",
+  description: "Gerencie pedidos em tempo real, controle estoque, acompanhe o financeiro e automatize notificações via WhatsApp. Planos a partir de R$79,90/mês.",
+  openGraph: {
+    title:       "LancheSmart — Sistema de Gestão para Lanchonetes",
+    description: "Gerencie pedidos em tempo real, controle estoque, acompanhe o financeiro e automatize notificações via WhatsApp.",
+  },
+};
 import {
   UtensilsCrossed, ClipboardList, Package, DollarSign, MessageSquare,
   ArrowRight, ChefHat, Bike, Check, Mail, Phone, MapPin,
@@ -37,7 +47,7 @@ const PASSOS = [
 const PLANOS = [
   {
     nome: "Básico",
-    preco: 49.9,
+    preco: 79.9,
     descricao: "Para quem está começando",
     destaque: false,
     recursos: [
@@ -49,7 +59,7 @@ const PLANOS = [
   },
   {
     nome: "Pro",
-    preco: 99.9,
+    preco: 119.9,
     descricao: "Para lanchonetes em crescimento",
     destaque: true,
     recursos: [

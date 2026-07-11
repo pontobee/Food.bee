@@ -3,7 +3,7 @@
 import { useState }    from "react";
 import useSWR          from "swr";
 import { useSession }  from "next-auth/react";
-import { Users, Shield, User, UserPlus, Lock, Mail } from "lucide-react";
+import { Users, Shield, User, UserPlus, Lock, Mail, Pencil, Trash2, X, AlertTriangle, Loader2 } from "lucide-react";
 import type { MembroDTO } from "@/types";
 import { formatDate } from "@/utils/formatDate";
 import { ConvidarMembroModal } from "@/components/dashboard/ConvidarMembroModal";
@@ -21,7 +21,12 @@ export default function EquipePage() {
     fetcher,
   );
 
-  const [modalAberto, setModalAberto] = useState(false);
+  const [modalAberto,   setModalAberto]   = useState(false);
+  const [editandoId,    setEditandoId]    = useState<string | null>(null);
+  const [novaRole,      setNovaRole]      = useState<"ADMIN" | "CAIXA">("CAIXA");
+  const [removendoId,   setRemovendoId]   = useState<string | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<MembroDTO | null>(null);
+  const [salvando,      setSalvando]      = useState(false);
 
   // Enquanto a sessão carrega, não decidimos nada (evita "piscar" o bloqueio).
   if (status === "loading") {
@@ -43,6 +48,26 @@ export default function EquipePage() {
         </p>
       </div>
     );
+  }
+
+  async function salvarRole(id: string) {
+    setSalvando(true);
+    await fetch(`/api/equipe/${id}`, {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ role: novaRole }),
+    });
+    setSalvando(false);
+    setEditandoId(null);
+    mutate();
+  }
+
+  async function removerMembro(id: string) {
+    setRemovendoId(id);
+    await fetch(`/api/equipe/${id}`, { method: "DELETE" });
+    setRemovendoId(null);
+    setConfirmRemove(null);
+    mutate();
   }
 
   return (
@@ -73,12 +98,14 @@ export default function EquipePage() {
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Acesso</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Último acesso</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Desde</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
               {membros.map((membro) => {
-                const ehAdmin = membro.role === "ADMIN";
-                const ehVoce  = membro.id === session?.user?.id;
+                const ehAdmin  = membro.role === "ADMIN";
+                const ehVoce   = membro.id === session?.user?.id;
+                const editando = editandoId === membro.id;
                 return (
                   <tr key={membro.id}
                       className="border-b border-dark-600/50 hover:bg-dark-700 transition-colors">
@@ -104,17 +131,37 @@ export default function EquipePage() {
                       </div>
                     </td>
 
-                    {/* Acesso (role) */}
+                    {/* Acesso (role) — inline edit */}
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full
-                                        text-xs font-semibold ${
-                        ehAdmin
-                          ? "bg-brand-500/15 text-brand-400"
-                          : "bg-dark-600 text-gray-300"
-                      }`}>
-                        {ehAdmin ? <Shield size={11} /> : <User size={11} />}
-                        {ehAdmin ? "Administrador" : "Caixa"}
-                      </span>
+                      {editando ? (
+                        <div className="flex items-center gap-1.5">
+                          <select
+                            value={novaRole}
+                            onChange={(e) => setNovaRole(e.target.value as "ADMIN" | "CAIXA")}
+                            className="h-8 bg-dark-700 border border-dark-600 rounded-lg px-2 text-xs text-white focus:border-brand-500 focus:outline-none"
+                          >
+                            <option value="CAIXA">Caixa</option>
+                            <option value="ADMIN">Administrador</option>
+                          </select>
+                          <button
+                            onClick={() => salvarRole(membro.id)}
+                            disabled={salvando}
+                            className="h-8 px-2 rounded-lg bg-brand-500 text-white text-xs font-semibold disabled:opacity-50"
+                          >
+                            {salvando ? <Loader2 size={12} className="animate-spin" /> : "OK"}
+                          </button>
+                          <button onClick={() => setEditandoId(null)} className="h-8 px-1.5 rounded-lg text-gray-400 hover:text-white">
+                            <X size={13} />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          ehAdmin ? "bg-brand-500/15 text-brand-400" : "bg-dark-600 text-gray-300"
+                        }`}>
+                          {ehAdmin ? <Shield size={11} /> : <User size={11} />}
+                          {ehAdmin ? "Administrador" : "Caixa"}
+                        </span>
+                      )}
                     </td>
 
                     {/* Último acesso */}
@@ -127,6 +174,28 @@ export default function EquipePage() {
                     {/* Membro desde */}
                     <td className="px-4 py-3 text-right text-gray-400">
                       {formatDate(new Date(membro.criado_em))}
+                    </td>
+
+                    {/* Ações */}
+                    <td className="px-4 py-3 text-right">
+                      {!ehVoce && !editando && (
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => { setEditandoId(membro.id); setNovaRole(membro.role as "ADMIN" | "CAIXA"); }}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-dark-600 transition-colors"
+                            title="Editar acesso"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            onClick={() => setConfirmRemove(membro)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                            title="Remover membro"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
@@ -141,10 +210,38 @@ export default function EquipePage() {
         <ConvidarMembroModal
           onClose={() => setModalAberto(false)}
           onSalvo={() => {
-            mutate();               // recarrega /api/equipe com o novo membro
+            mutate();
             setModalAberto(false);
           }}
         />
+      )}
+
+      {/* Modal de confirmação de remoção */}
+      {confirmRemove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-sm bg-dark-800 border border-dark-600 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+                <AlertTriangle size={17} className="text-red-400" />
+              </div>
+              <h3 className="font-bold text-white">Remover membro</h3>
+            </div>
+            <p className="text-sm text-gray-400">
+              <strong className="text-white">{confirmRemove.nome}</strong> perderá o acesso ao painel.
+              Esta ação pode ser revertida convidando-o novamente.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setConfirmRemove(null)} className="btn-ghost text-sm">Cancelar</button>
+              <button
+                onClick={() => removerMembro(confirmRemove.id)}
+                disabled={removendoId === confirmRemove.id}
+                className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-semibold disabled:opacity-50"
+              >
+                {removendoId === confirmRemove.id ? <Loader2 size={14} className="animate-spin" /> : "Remover"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

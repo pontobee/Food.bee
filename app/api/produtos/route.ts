@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
-import { auth }       from "@/auth";
-import { authGuard }  from "@/lib/auth-guards";
-import { prisma }     from "@/lib/prisma";
+import { NextRequest, NextResponse } from "next/server";
+import { auth }          from "@/auth";
+import { authGuard }     from "@/lib/auth-guards";
+import { prisma }        from "@/lib/prisma";
+import { createProduto } from "@/modules/catalog/produtos.service";
 
 // GET /api/produtos — lista produtos ativos do tenant
 export async function GET() {
@@ -37,4 +38,19 @@ export async function GET() {
   }));
 
   return NextResponse.json(data);
+}
+
+// POST /api/produtos — cria novo produto (somente ADMIN)
+export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  try {
+    const body = await req.json();
+    const produto = await createProduto(body, session.user.lanchonete_id);
+    return NextResponse.json(produto, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Erro ao criar produto" }, { status: 500 });
+  }
 }

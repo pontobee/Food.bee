@@ -11,8 +11,7 @@ export type FormaPagamento =
   | "DINHEIRO"
   | "CARTAO_DEBITO"
   | "CARTAO_CREDITO"
-  | "PIX"
-  | "FIADO";
+  | "PIX";
 
 export type TipoAdicional = "ADICIONAL" | "EXCECAO";
 export type RoleUsuario   = "ADMIN" | "CAIXA";
@@ -33,35 +32,62 @@ export interface ItemPedidoDTO {
   adicionais:             ItemAdicionalDTO[];
 }
 
+export type TipoEntrega = "BALCAO" | "DELIVERY";
+
+export interface TaxaEntregaDTO {
+  id:        string;
+  nome:      string;
+  taxa:      number;
+  tempo_min: number | null;
+}
+
 export interface PedidoDTO {
-  id:              string;
-  numero_pedido:   number;
-  status:          StatusPedido;
-  forma_pagamento: FormaPagamento;
-  origem:          string;
-  subtotal:        number;
-  desconto:        number;
-  total:           number;
-  troco:           number | null;
-  observacao:      string | null;
-  criado_em:       string;
-  atualizado_em:   string;
-  cliente:         { id: string; nome: string; telefone: string } | null;
-  itens:           ItemPedidoDTO[];
+  id:               string;
+  numero_pedido:    number;
+  status:           StatusPedido;
+  forma_pagamento:  FormaPagamento;
+  origem:           string;
+  subtotal:         number;
+  desconto:         number;
+  total:            number;
+  troco:            number | null;
+  observacao:            string | null;
+  motivo_cancelamento:   string | null;
+  pago_em:               string | null;
+  tipo_entrega:     TipoEntrega;
+  taxa_entrega:     number | null;
+  endereco_entrega: string | null;
+  criado_em:        string;
+  atualizado_em:    string;
+  cliente:          { id: string; nome: string; telefone: string } | null;
+  itens:            ItemPedidoDTO[];
 }
 
 export interface ProdutoDTO {
-  id:            string;
-  nome:          string;
-  descricao:     string | null;
-  preco_venda:   number;
-  preco_custo:   number;
-  estoque_atual: number;
-  estoque_minimo: number;
-  unidade:       string;
-  imagem_url:    string | null;
-  categoria:     { id: string; nome: string } | null;
-  adicionais:    { id: string; nome: string; tipo: TipoAdicional; preco_extra: number }[];
+  id:                string;
+  nome:              string;
+  descricao:         string | null;
+  preco_venda:       number;
+  preco_custo:       number;
+  estoque_atual:     number;
+  estoque_minimo:    number;
+  controlar_estoque: boolean;
+  unidade:           string;
+  imagem_url:        string | null;
+  categoria:         { id: string; nome: string } | null;
+  adicionais:        { id: string; nome: string; tipo: TipoAdicional; preco_extra: number }[];
+}
+
+export interface MovimentacaoDTO {
+  id:             string;
+  tipo:           "ENTRADA" | "SAIDA";
+  quantidade:     number;
+  estoque_antes:  number;
+  estoque_depois: number;
+  motivo:         string | null;
+  criado_em:      string;
+  produto: { id: string; nome: string; unidade: string };
+  usuario: { id: string; nome: string };
 }
 
 // Membro da equipe — retorno de GET /api/equipe.
@@ -87,4 +113,46 @@ export interface ChartDataPoint {
   name:      string;
   receita:   number;
   pedidos:   number;
+}
+
+export interface ChartsDTO {
+  faturamento7d: ChartDataPoint[];
+  top5Produtos:  { nome: string; quantidade: number }[];
+  pagamentos:    { name: string; value: number }[];
+}
+
+export type TipoTransacao = "RECEITA" | "DESPESA";
+
+export interface TransacaoDTO {
+  id:           string;
+  tipo:         TipoTransacao;
+  categoria:    string;
+  descricao:    string;
+  valor:        number;
+  data:         string;
+  pedido_id:    string | null;
+  usuario_nome: string;
+  criado_em:    string;
+}
+
+export interface TransacoesPageDTO {
+  transacoes: TransacaoDTO[];
+  total:      number;
+  paginas:    number;
+}
+
+export interface ClienteDTO {
+  id:            string;
+  nome:          string;
+  telefone:      string;
+  endereco:      string | null;
+  total_pedidos: number;
+  total_gasto:   number;
+  criado_em:     string;
+}
+
+export interface ClientesPageDTO {
+  clientes: ClienteDTO[];
+  total:    number;
+  paginas:  number;
 }

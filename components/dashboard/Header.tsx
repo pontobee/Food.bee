@@ -1,9 +1,13 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { LogOut, ChevronDown } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 
-export function Header() {
+interface HeaderProps {
+  onOpenMenu: () => void;
+}
+
+export function Header({ onOpenMenu }: HeaderProps) {
   const { data: session } = useSession();
 
   const nome      = session?.user?.name ?? "—";
@@ -13,8 +17,17 @@ export function Header() {
   return (
     <header className="h-16 shrink-0 flex items-center justify-between
                        px-4 md:px-6 border-b border-dark-600 bg-dark-800">
-      {/* Lanchonete */}
-      <p className="text-sm font-medium text-white truncate">{lanchonete}</p>
+      {/* Esquerda: hambúrguer (mobile) + nome da lanchonete */}
+      <div className="flex items-center gap-2 min-w-0">
+        <button
+          onClick={onOpenMenu}
+          className="md:hidden btn-ghost px-2 text-gray-400 hover:text-white shrink-0"
+          aria-label="Abrir menu"
+        >
+          <Menu size={20} />
+        </button>
+        <p className="text-sm font-medium text-white truncate">{lanchonete}</p>
+      </div>
 
       {/* Usuário */}
       <div className="flex items-center gap-3">

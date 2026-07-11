@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { Prisma, FormaPagamento, OrigemPedido, StatusPedido } from "@prisma/client";
+import { Prisma, FormaPagamento, OrigemPedido, StatusPedido, TipoEntrega } from "@prisma/client";
 import { OrderValidationError, OrderNotFoundError } from "@/modules/orders/orders.errors";
 import { startOfDayBRT } from "@/lib/timezone";
 import type { TenantContext } from "@/modules/shared/tenant.types";
 
 const FORMAS_PAGAMENTO = new Set<string>(Object.values(FormaPagamento));
 const ORIGENS_PEDIDO   = new Set<string>(Object.values(OrigemPedido));
+const TIPOS_ENTREGA    = new Set<string>(Object.values(TipoEntrega));
 const STATUSES_PEDIDO  = new Set<string>(Object.values(StatusPedido));
 
 // ── Tipos de entrada (DTOs vindos da API) ──────────────────────
@@ -20,10 +21,15 @@ interface ItemInput {
 }
 
 export interface CriarPedidoInput {
-  itens?: ItemInput[];
-  forma_pagamento?: string;
-  origem?: string;
-  observacao?: string | null;
+  itens?:            ItemInput[];
+  forma_pagamento?:  string;
+  origem?:           string;
+  cliente_id?:       string | null;
+  observacao?:       string | null;
+  tipo_entrega?:     string;
+  taxa_entrega_id?:  string;
+  endereco_entrega?: string | null;
+  troco?:            number | null;
 }
 
 export interface AtualizarStatusInput {
@@ -72,6 +78,12 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
   if (input.origem !== undefined && !ORIGENS_PEDIDO.has(input.origem)) {
     throw new OrderValidationError("origem inválida");
   }
+  if (input.tipo_entrega !== undefined && !TIPOS_ENTREGA.has(input.tipo_entrega)) {
+    throw new OrderValidationError("tipo_entrega inválido");
+  }
+  if (input.tipo_entrega === "DELIVERY" && !input.endereco_entrega?.trim()) {
+    throw new OrderValidationError("endereço de entrega obrigatório para delivery");
+  }
   for (const item of itensInput) {
     if (!item.produto_id || !Number.isInteger(item.quantidade) || (item.quantidade as number) < 1) {
       throw new OrderValidationError("Item de pedido inválido");
@@ -84,6 +96,16 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
     where: { id: { in: produtoIds }, lanchonete_id: lid, inativo_em: null },
   });
   const produtoMap = new Map(produtos.map((p) => [p.id, p]));
+
+  // 2b. Validação de estoque (apenas produtos com controlar_estoque = true)
+  for (const item of itensInput) {
+    const produto = produtoMap.get(item.produto_id!);
+    if (produto?.controlar_estoque && produto.estoque_atual < (item.quantidade ?? 1)) {
+      throw new OrderValidationError(
+        `"${produto.nome}" sem estoque suficiente (disponível: ${produto.estoque_atual})`
+      );
+    }
+  }
 
   const adicionalIds = [
     ...new Set(
@@ -142,7 +164,22 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
     });
   }
 
-  // 4. Número sequencial por tenant via função PG
+  // 4. Resolve taxa de entrega (server-side — nunca confia no valor do cliente)
+  let taxaEntregaValor = new Prisma.Decimal(0);
+  let taxaEntregaId: string | undefined;
+
+  if (input.tipo_entrega === "DELIVERY" && input.taxa_entrega_id) {
+    const zona = await prisma.taxaEntrega.findFirst({
+      where: { id: input.taxa_entrega_id, lanchonete_id: lid, ativa: true },
+    });
+    if (!zona) throw new OrderValidationError("Zona de entrega não encontrada");
+    taxaEntregaValor = zona.taxa;
+    taxaEntregaId    = zona.id;
+  }
+
+  const total = subtotal.add(taxaEntregaValor);
+
+  // 5. Número sequencial por tenant via função PG
   // UUID inválido causaria erro silencioso no cast ::uuid — validamos antes.
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lid)) {
     throw new OrderValidationError("lanchonete_id inválido");
@@ -152,18 +189,28 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
   `;
   const numeroPedido = seqResult[0].next_numero_pedido;
 
-  // 5. Persistência
-  return prisma.pedido.create({
+  // 6. Persistência
+  const pedido = await prisma.pedido.create({
     data: {
       lanchonete_id:   lid,
       usuario_id:      uid,
+      cliente_id:      input.cliente_id ?? null,
       numero_pedido:   numeroPedido,
       forma_pagamento: input.forma_pagamento as FormaPagamento,
       origem:          (input.origem as OrigemPedido) ?? "BALCAO",
       observacao:      input.observacao ?? null,
+      tipo_entrega:    (input.tipo_entrega as TipoEntrega) ?? "BALCAO",
+      taxa_entrega_id: taxaEntregaId ?? null,
+      taxa_entrega:    taxaEntregaValor.gt(0) ? taxaEntregaValor : null,
+      endereco_entrega: input.endereco_entrega ?? null,
       subtotal,
       desconto:        0,
-      total:           subtotal,
+      total,
+      troco:           input.troco ?? null,
+      // Pagamentos imediatos (dinheiro/cartão) são marcados como pagos na criação
+      pago_em: ["DINHEIRO", "CARTAO_DEBITO", "CARTAO_CREDITO"].includes(input.forma_pagamento ?? "")
+        ? new Date()
+        : null,
       itens: { create: itensData },
     },
     include: {
@@ -171,6 +218,11 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
       itens:   { include: { adicionais: true } },
     },
   });
+
+  const channel = `pedido_status_${lid}`;
+  await prisma.$executeRaw`SELECT pg_notify(${channel}, ${pedido.id})`;
+
+  return pedido;
 }
 
 // ── Escrita: atualiza status do pedido ─────────────────────────
@@ -201,18 +253,37 @@ export async function updateOrderStatus(
 
   // Cria transação de receita ao entregar (apenas na transição para ENTREGUE)
   if (input.status === "ENTREGUE" && pedido.status !== "ENTREGUE") {
-    await prisma.transacao.create({
-      data: {
-        lanchonete_id: lid,
-        pedido_id:     id,
-        usuario_id:    uid,
-        tipo:          "RECEITA",
-        categoria:     "Venda",
-        descricao:     `Pedido #${pedido.numero_pedido}`,
-        valor:         pedido.total,
-      },
-    });
+    const ops: Promise<unknown>[] = [
+      prisma.transacao.create({
+        data: {
+          lanchonete_id: lid,
+          pedido_id:     id,
+          usuario_id:    uid,
+          tipo:          "RECEITA",
+          categoria:     "Venda",
+          descricao:     `Pedido #${pedido.numero_pedido}`,
+          valor:         pedido.total,
+        },
+      }),
+    ];
+
+    if (pedido.cliente_id) {
+      ops.push(
+        prisma.cliente.update({
+          where: { id: pedido.cliente_id },
+          data: {
+            total_pedidos: { increment: 1 },
+            total_gasto:   { increment: pedido.total },
+          },
+        })
+      );
+    }
+
+    await Promise.all(ops);
   }
+
+  const channel = `pedido_status_${lid}`;
+  await prisma.$executeRaw`SELECT pg_notify(${channel}, ${id})`;
 
   return atualizado;
 }
