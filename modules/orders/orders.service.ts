@@ -190,7 +190,7 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
   const numeroPedido = seqResult[0].next_numero_pedido;
 
   // 6. Persistência
-  return prisma.pedido.create({
+  const pedido = await prisma.pedido.create({
     data: {
       lanchonete_id:   lid,
       usuario_id:      uid,
@@ -218,6 +218,11 @@ export async function createOrder(input: CriarPedidoInput, ctx: TenantContext) {
       itens:   { include: { adicionais: true } },
     },
   });
+
+  const channel = `pedido_status_${lid}`;
+  await prisma.$executeRaw`SELECT pg_notify(${channel}, ${pedido.id})`;
+
+  return pedido;
 }
 
 // ── Escrita: atualiza status do pedido ─────────────────────────
@@ -276,6 +281,9 @@ export async function updateOrderStatus(
 
     await Promise.all(ops);
   }
+
+  const channel = `pedido_status_${lid}`;
+  await prisma.$executeRaw`SELECT pg_notify(${channel}, ${id})`;
 
   return atualizado;
 }
