@@ -41,20 +41,20 @@ async function main() {
   });
 
   // Admin padrão
-  const senhaHash = await bcrypt.hash("admin123", 10);
+  const senhaHash = await bcrypt.hash("bee123", 10);
   await prisma.usuario.upsert({
-    where: { lanchonete_id_email: { lanchonete_id: lanchonete.id, email: "admin@demo.com" } },
+    where: { lanchonete_id_email: { lanchonete_id: lanchonete.id, email: "beetest@demo.com" } },
     update: {},
     create: {
       lanchonete_id: lanchonete.id,
       nome: "Administrador",
-      email: "admin@demo.com",
+      email: "beetest@demo.com",
       senha_hash: senhaHash,
       role: "ADMIN",
     },
   });
 
-  console.log("✅ Usuário admin: admin@demo.com / admin123");
+  console.log("✅ Usuário admin: beetest@demo.com / bee123");
 
   // Categorias
   const categorias = await Promise.all(
