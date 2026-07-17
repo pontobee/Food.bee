@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
+import { Inter }          from "next/font/google";
 import { Providers }      from "@/components/Providers";
 import { ErrorBoundary }  from "@/components/ErrorBoundary";
 import "./globals.css";
+
+const inter = Inter({
+  subsets:  ["latin"],
+  variable: "--font-inter",
+  display:  "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.APP_URL ?? "https://lanchesmart.com.br"),
@@ -26,7 +33,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={inter.variable}>
       <body className="bg-dark-900 text-white antialiased">
         <ErrorBoundary>
           <Providers>{children}</Providers>

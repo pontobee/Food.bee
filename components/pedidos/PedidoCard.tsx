@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  Banknote, CreditCard, QrCode, ChevronRight, X, CheckCircle2, Bike, AlertTriangle,
+  Banknote, CreditCard, QrCode, ChevronRight, X, CheckCircle2, Bike, AlertTriangle, Printer,
 } from "lucide-react";
 import type { PedidoDTO, FormaPagamento, StatusPedido } from "@/types";
+import { TicketComanda, type PedidoParaImpressao } from "@/components/pedidos/TicketComanda";
 import { atualizarStatus }  from "@/hooks/usePedidos";
 import { ModalPix }         from "@/components/pedidos/ModalPix";
 
@@ -45,6 +46,55 @@ const PROXIMOS: Partial<Record<StatusPedido, StatusPedido>> = {
   EM_PREPARO: "PRONTO",
   PRONTO:     "ENTREGUE",
 };
+
+// ── Helpers de impressão ──────────────────────────────────
+
+function toPedidoParaImpressao(p: PedidoDTO): PedidoParaImpressao {
+  return {
+    id:       String(p.numero_pedido),
+    cliente:  p.cliente?.nome ?? "Cliente balcão",
+    telefone: p.cliente?.telefone,
+    tipo:     p.tipo_entrega === "DELIVERY" ? "DELIVERY" : "RETIRADA",
+    endereco: p.tipo_entrega === "DELIVERY" && p.endereco_entrega
+      ? { rua: p.endereco_entrega, bairro: "", cidade: "" }
+      : undefined,
+    itens: p.itens.map((item) => ({
+      quantidade: item.quantidade,
+      nome:       item.produto_nome,
+      adicionais: item.adicionais.filter((a) => a.tipo === "ADICIONAL").map((a) => a.nome),
+      remocoes:   item.adicionais.filter((a) => a.tipo === "EXCECAO").map((a) => a.nome),
+    })),
+    data:            new Date(p.criado_em),
+    fop:             FOP_LABEL[p.forma_pagamento],
+    statusPagamento: p.pago_em ? "PAGO" : "PENDENTE",
+    subtotal:        Number(p.subtotal),
+    taxaEntrega:     p.taxa_entrega != null ? Number(p.taxa_entrega) : undefined,
+    total:           Number(p.total),
+    trocoPara:       p.troco != null ? Number(p.troco) : undefined,
+  };
+}
+
+function PrintModal({ pedido, onClose }: { pedido: PedidoParaImpressao; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <div className="bg-dark-800 border border-dark-600 rounded-2xl shadow-xl overflow-hidden max-w-xs w-full">
+        <div className="flex items-center justify-between px-4 py-3 no-print border-b border-dark-600">
+          <h2 className="font-semibold text-white text-sm">Comanda #{pedido.id}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <X size={16} />
+          </button>
+        </div>
+        <TicketComanda pedido={pedido} />
+        <div className="flex gap-2 p-4 no-print border-t border-dark-600">
+          <button onClick={() => window.print()} className="flex-1 btn-primary text-sm">
+            <Printer size={14} /> Imprimir
+          </button>
+          <button onClick={onClose} className="btn-ghost text-sm px-4">Fechar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Modal de cancelamento ─────────────────────────────────
 
@@ -103,6 +153,7 @@ export function PedidoCard({ pedido, onMutate }: Props) {
   const [erro,         setErro]         = useState<string | null>(null);
   const [pixAberto,    setPixAberto]    = useState(false);
   const [cancelModal,  setCancelModal]  = useState(false);
+  const [printOpen,    setPrintOpen]    = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setMinutos(minutosDesde(pedido.criado_em)), 60_000);
@@ -131,8 +182,8 @@ export function PedidoCard({ pedido, onMutate }: Props) {
 
   return (
     <>
-      <article className="bg-dark-700 border border-dark-600 rounded-xl p-3
-                          hover:border-dark-500 transition-colors">
+      <article className="bg-gradient-dark-card border border-dark-600/80 rounded-2xl p-3.5
+                          hover:border-dark-500/70 hover:shadow-card-lg transition-all duration-200">
 
         {/* Linha 1: número + FOP */}
         <div className="flex items-center justify-between mb-1">
@@ -216,14 +267,23 @@ export function PedidoCard({ pedido, onMutate }: Props) {
           </p>
         )}
 
-        {/* Rodapé: timer + total */}
-        <div className="flex items-center justify-between pt-2 border-t border-dark-600">
+        {/* Rodapé: timer + imprimir + total */}
+        <div className="flex items-center justify-between pt-2.5 border-t border-dark-600/60">
           <span className={`text-xs ${timerClasse(minutos, pedido.status)}`}>
             {formatarMinutos(minutos)}
           </span>
-          <span className="text-sm font-bold text-white">
-            R$ {Number(pedido.total).toFixed(2).replace(".", ",")}
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPrintOpen(true)}
+              className="text-gray-500 hover:text-gray-300 transition-colors"
+              title="Imprimir comanda"
+            >
+              <Printer size={13} />
+            </button>
+            <span className="text-sm font-bold text-white">
+              R$ {Number(pedido.total).toFixed(2).replace(".", ",")}
+            </span>
+          </div>
         </div>
 
         {/* Ações */}
@@ -249,9 +309,10 @@ export function PedidoCard({ pedido, onMutate }: Props) {
                 onClick={() => avancar(proximo)}
                 disabled={!!loading}
                 className="flex-1 flex items-center justify-center gap-1
-                           min-h-[44px] bg-brand-500 hover:bg-brand-600
-                           text-white text-xs font-semibold rounded-lg
-                           transition-colors disabled:opacity-50"
+                           min-h-[44px] bg-gradient-brand hover:brightness-105
+                           text-white text-xs font-semibold rounded-xl
+                           shadow-glow-sm hover:shadow-glow
+                           transition-all duration-200 disabled:opacity-50 active:scale-95"
               >
                 {loading === proximo
                   ? "…"
@@ -292,6 +353,13 @@ export function PedidoCard({ pedido, onMutate }: Props) {
           onConfirmar={confirmarCancelamento}
           onFechar={() => setCancelModal(false)}
           loading={loading === "CANCELADO"}
+        />
+      )}
+
+      {printOpen && (
+        <PrintModal
+          pedido={toPedidoParaImpressao(pedido)}
+          onClose={() => setPrintOpen(false)}
         />
       )}
     </>

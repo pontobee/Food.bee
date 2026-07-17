@@ -39,8 +39,9 @@ vi.mock("@/lib/prisma", () => ({
       create:    vi.fn(),
     },
     movimentacaoEstoque: { findMany: vi.fn() },
-    $queryRaw:     vi.fn(),
-    $transaction:  vi.fn(),
+    $queryRaw:    vi.fn(),
+    $executeRaw:  vi.fn().mockResolvedValue(0),
+    $transaction: vi.fn(),
   },
 }));
 
