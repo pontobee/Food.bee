@@ -30,8 +30,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const emailKey = `login:email:${credentials.email}`;
         const ipKey    = `login:ip:${ip}`;
 
-        const { allowed: emailOk, retryAfterSeconds: emailWait } = checkRateLimit(emailKey);
-        const { allowed: ipOk,    retryAfterSeconds: ipWait    } = checkRateLimit(ipKey);
+        const { allowed: emailOk, retryAfterSeconds: emailWait } = await checkRateLimit(emailKey);
+        const { allowed: ipOk,    retryAfterSeconds: ipWait    } = await checkRateLimit(ipKey);
         if (!emailOk || !ipOk) throw new RateLimitError(String(Math.max(emailWait, ipWait)));
 
         const usuario = await prisma.usuario.findFirst({
@@ -53,8 +53,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           data: { ultimo_acesso_em: new Date() },
         });
 
-        resetRateLimit(emailKey);
-        resetRateLimit(ipKey);
+        await resetRateLimit(emailKey);
+        await resetRateLimit(ipKey);
 
         return {
           id: usuario.id,
