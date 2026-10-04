@@ -5,8 +5,9 @@ import { signIn }                    from "next-auth/react";
 import { useRouter }                 from "next/navigation";
 import Link                          from "next/link";
 import {
-  UtensilsCrossed, Mail, Lock, User, Store, AlertCircle, Loader2,
+  Mail, Lock, User, Store, AlertCircle, Loader2,
 } from "lucide-react";
+import { Wordmark } from "@/components/brand/Wordmark";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -63,11 +64,8 @@ export default function SignupPage() {
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-brand-500 flex items-center justify-center mb-3">
-            <UtensilsCrossed className="text-white" size={26} />
-          </div>
-          <h1 className="text-2xl font-bold text-white">LancheSmart</h1>
-          <p className="text-gray-500 text-sm mt-1">Crie sua conta grátis — 14 dias de trial</p>
+          <Wordmark size="lg" />
+          <p className="text-dark-300 text-sm mt-2">Crie sua conta grátis — 14 dias de trial</p>
         </div>
 
         {/* Card */}
@@ -87,9 +85,7 @@ export default function SignupPage() {
                   value={nomeLanchonete}
                   onChange={(e) => setNomeLanchonete(e.target.value)}
                   placeholder="Hamburgueria do Zé"
-                  className="w-full h-11 bg-dark-700 border border-dark-600 rounded-xl
-                             pl-10 pr-4 text-white text-sm placeholder:text-gray-600
-                             focus:border-brand-500 focus:outline-none transition-colors"
+                  className="input pl-10 h-11"
                 />
               </div>
             </div>
@@ -107,9 +103,7 @@ export default function SignupPage() {
                   value={nomeUsuario}
                   onChange={(e) => setNomeUsuario(e.target.value)}
                   placeholder="José Silva"
-                  className="w-full h-11 bg-dark-700 border border-dark-600 rounded-xl
-                             pl-10 pr-4 text-white text-sm placeholder:text-gray-600
-                             focus:border-brand-500 focus:outline-none transition-colors"
+                  className="input pl-10 h-11"
                 />
               </div>
             </div>
@@ -128,9 +122,7 @@ export default function SignupPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="ze@hamburgueria.com"
-                  className="w-full h-11 bg-dark-700 border border-dark-600 rounded-xl
-                             pl-10 pr-4 text-white text-sm placeholder:text-gray-600
-                             focus:border-brand-500 focus:outline-none transition-colors"
+                  className="input pl-10 h-11"
                 />
               </div>
             </div>
@@ -149,9 +141,7 @@ export default function SignupPage() {
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
                   placeholder="Mínimo 6 caracteres"
-                  className="w-full h-11 bg-dark-700 border border-dark-600 rounded-xl
-                             pl-10 pr-4 text-white text-sm placeholder:text-gray-600
-                             focus:border-brand-500 focus:outline-none transition-colors"
+                  className="input pl-10 h-11"
                 />
               </div>
             </div>

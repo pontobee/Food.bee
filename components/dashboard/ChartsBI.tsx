@@ -17,21 +17,21 @@ interface ChartsData {
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-const GRID_COLOR      = "#2d2d3d";
-const AXIS_COLOR      = "#6b7280";
+const GRID_COLOR      = "#252828";
+const AXIS_COLOR      = "#6F7470";
 const TOOLTIP_STYLE   = {
-  backgroundColor: "#1a1a2e",
-  border:          "1px solid #2d2d3d",
+  backgroundColor: "#171919",
+  border:          "1px solid #252828",
   borderRadius:    8,
-  color:           "#e2e8f0",
+  color:           "#F5F5F0",
   fontSize:        12,
 };
-const PIE_COLORS = ["#f97316", "#3b82f6", "#10b981", "#a855f7"];
+const PIE_COLORS = ["#D4A017", "#3b82f6", "#10b981", "#6F7470"];
 
 function FaturamentoChart({ data }: { data: ChartsData["faturamento7d"] }) {
   return (
     <div className="card p-5">
-      <p className="text-sm font-semibold text-white mb-4">Faturamento — últimos 7 dias</p>
+      <p className="text-sm font-medium text-dark-100 mb-4">Faturamento — últimos 7 dias</p>
       <ResponsiveContainer width="100%" height={200}>
         <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
           <defs>
@@ -71,7 +71,7 @@ function FaturamentoChart({ data }: { data: ChartsData["faturamento7d"] }) {
 function TopProdutosChart({ data }: { data: ChartsData["top5Produtos"] }) {
   return (
     <div className="card p-5">
-      <p className="text-sm font-semibold text-white mb-4">Top 5 produtos</p>
+      <p className="text-sm font-medium text-dark-100 mb-4">Top 5 produtos</p>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart
           data={data}
@@ -90,7 +90,7 @@ function TopProdutosChart({ data }: { data: ChartsData["top5Produtos"] }) {
             type="category"
             dataKey="nome"
             width={90}
-            tick={{ fill: "#e2e8f0", fontSize: 11 }}
+            tick={{ fill: "#F5F5F0", fontSize: 11 }}
             axisLine={false}
             tickLine={false}
           />
@@ -98,7 +98,7 @@ function TopProdutosChart({ data }: { data: ChartsData["top5Produtos"] }) {
             contentStyle={TOOLTIP_STYLE}
             formatter={(v: number) => [v, "Vendidos"]}
           />
-          <Bar dataKey="quantidade" fill="#f97316" radius={[0, 4, 4, 0]} maxBarSize={18} />
+          <Bar dataKey="quantidade" fill="#D4A017" radius={[0, 4, 4, 0]} maxBarSize={18} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -110,7 +110,7 @@ function PagamentosChart({ data }: { data: ChartsData["pagamentos"] }) {
 
   return (
     <div className="card p-5">
-      <p className="text-sm font-semibold text-white mb-4">Formas de pagamento</p>
+      <p className="text-sm font-medium text-dark-100 mb-4">Formas de pagamento</p>
       {total === 0 ? (
         <p className="text-sm text-gray-500 text-center py-8">Sem dados</p>
       ) : (
@@ -177,7 +177,7 @@ export default function ChartsBI() {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
+      <h2 className="text-[11px] font-medium text-dark-300 uppercase tracking-[0.14em]">
         Análise — últimos 7 dias
       </h2>
       <FaturamentoChart data={data.faturamento7d} />

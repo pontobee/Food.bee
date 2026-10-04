@@ -1,57 +1,27 @@
-/**
- * UI / Button — Botão reutilizável do sistema
- *
- * Por que criar um componente de botão em vez de usar <button> direto?
- * Porque se você usar <button> em 100 lugares e depois quiser mudar o visual,
- * vai ter que mudar 100 vezes. Com esse componente, muda em UM lugar.
- *
- * Variantes disponíveis:
- *   - "primary"  → laranja sólido (ação principal)
- *   - "outline"  → borda laranja (ação secundária)
- *   - "ghost"    → sem fundo, só texto (ação terciária)
- *   - "danger"   → vermelho (ações destrutivas, ex: cancelar pedido)
- *
- * Tamanhos disponíveis:
- *   - "sm"  → pequeno (tabelas, listas)
- *   - "md"  → médio (padrão)
- *   - "lg"  → grande (landing page, CTAs)
- *
- * Como usar:
- *   <Button variant="primary" size="lg" onClick={handleClick}>
- *     Testar Demo
- *   </Button>
- *
- *   <Button variant="outline" isLoading={sending} leftIcon={<SendIcon />}>
- *     Enviar
- *   </Button>
- */
-
 import { cn } from "@/utils/cn";
 import { Loader2 } from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-// "interface" define quais propriedades o componente aceita
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "outline" | "ghost" | "danger";
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
   size?: "sm" | "md" | "lg";
-  isLoading?: boolean;   // Mostra um spinner giratório quando true
-  leftIcon?: ReactNode;  // Ícone à esquerda do texto
-  rightIcon?: ReactNode; // Ícone à direita do texto
+  isLoading?: boolean;
+  leftIcon?: ReactNode;
+  rightIcon?: ReactNode;
 }
 
-// Mapeia cada variante para as classes CSS correspondentes
 const variantClasses = {
-  primary: "bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/20",
-  outline: "border-2 border-brand-500 text-brand-500 hover:bg-brand-500 hover:text-white",
-  ghost:   "text-gray-400 hover:text-white hover:bg-dark-600",
-  danger:  "bg-danger-500 hover:bg-red-700 text-white shadow-lg shadow-danger-500/20",
+  primary:   "bg-brand-500 hover:bg-brand-600 text-dark-950",
+  secondary: "bg-dark-600 border border-dark-400 text-dark-100 hover:bg-dark-500",
+  outline:   "border border-dark-400 text-dark-100 hover:bg-dark-700",
+  ghost:     "text-dark-200 hover:text-dark-100 hover:bg-dark-700",
+  danger:    "bg-danger-500 hover:bg-red-600 text-white",
 };
 
-// Mapeia cada tamanho para as classes CSS correspondentes
 const sizeClasses = {
-  sm: "px-3 py-1.5 text-sm gap-1.5",
-  md: "px-5 py-2.5 text-sm gap-2",
-  lg: "px-8 py-3.5 text-base gap-2.5",
+  sm: "px-3 py-1.5 text-sm gap-1.5 min-h-[32px]",
+  md: "px-5 py-2.5 text-sm gap-2 min-h-[44px]",
+  lg: "px-8 py-3.5 text-base gap-2.5 min-h-[48px]",
 };
 
 export function Button({
@@ -63,7 +33,7 @@ export function Button({
   rightIcon,
   className,
   disabled,
-  ...props // Passa todos os outros atributos HTML normais (onClick, type, etc.)
+  ...props
 }: ButtonProps) {
   const isDisabled = disabled || isLoading;
 
@@ -71,18 +41,17 @@ export function Button({
     <button
       disabled={isDisabled}
       className={cn(
-        // Classes base — aplicadas sempre
-        "inline-flex items-center justify-center font-semibold rounded-xl",
-        "transition-all duration-200 cursor-pointer",
+        "inline-flex items-center justify-center font-semibold rounded-lg",
+        "transition-colors duration-150 cursor-pointer",
+        "focus-visible:ring-1 focus-visible:ring-brand-500/40",
         "disabled:opacity-50 disabled:cursor-not-allowed",
-        // Classes da variante e tamanho escolhidos
+        "active:scale-[0.98]",
         variantClasses[variant],
         sizeClasses[size],
-        className
+        className,
       )}
       {...props}
     >
-      {/* Spinner de loading — aparece substituindo o ícone esquerdo */}
       {isLoading ? (
         <Loader2 size={16} className="animate-spin" />
       ) : (

@@ -22,12 +22,11 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="min-h-screen bg-dark-900 flex items-center justify-center px-4">
           <div className="text-center">
-            <p className="text-white font-bold text-lg">Algo deu errado</p>
-            <p className="text-gray-500 text-sm mt-2">Recarregue a página para continuar.</p>
+            <p className="text-dark-100 font-medium text-lg">Algo deu errado</p>
+            <p className="text-dark-300 text-sm mt-2">Recarregue a página para continuar.</p>
             <button
               onClick={() => this.setState({ hasError: false })}
-              className="mt-4 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white
-                         rounded-lg text-sm font-semibold transition-colors"
+              className="btn-primary mt-4"
             >
               Tentar novamente
             </button>

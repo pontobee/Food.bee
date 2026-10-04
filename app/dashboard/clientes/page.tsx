@@ -5,7 +5,9 @@ import useSWR                               from "swr";
 import { useSession }                       from "next-auth/react";
 import { useRouter }                        from "next/navigation";
 import { Plus, Search, Users, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
-import { ClienteModal }        from "@/components/clientes/ClienteModal";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ClienteModal } from "@/components/clientes/ClienteModal";
 import { ClienteDetalhePanel } from "@/components/clientes/ClienteDetalhePanel";
 import type { ClienteDTO, ClientesPageDTO } from "@/types";
 

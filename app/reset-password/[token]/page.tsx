@@ -3,7 +3,8 @@
 import { useState, type FormEvent } from "react";
 import { useParams, useRouter }      from "next/navigation";
 import Link                          from "next/link";
-import { UtensilsCrossed, Lock, Eye, EyeOff, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Lock, Eye, EyeOff, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Wordmark } from "@/components/brand/Wordmark";
 
 export default function ResetPasswordPage() {
   const params = useParams();
@@ -51,11 +52,8 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-sm">
 
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-brand-500 flex items-center justify-center mb-3">
-            <UtensilsCrossed className="text-white" size={26} />
-          </div>
-          <h1 className="text-2xl font-bold text-white">LancheSmart</h1>
-          <p className="text-gray-500 text-sm mt-1">Nova senha</p>
+          <Wordmark size="lg" />
+          <p className="text-dark-300 text-sm mt-2">Nova senha</p>
         </div>
 
         <div className="card p-6">
@@ -78,9 +76,7 @@ export default function ResetPasswordPage() {
                     value={senha}
                     onChange={(e) => setSenha(e.target.value)}
                     placeholder="Mínimo 6 caracteres"
-                    className="w-full h-11 bg-dark-700 border border-dark-600 rounded-xl
-                               pl-10 pr-10 text-white text-sm placeholder:text-gray-600
-                               focus:border-brand-500 focus:outline-none transition-colors"
+                    className="input pl-10 pr-10 h-11"
                   />
                   <button
                     type="button"
@@ -103,9 +99,7 @@ export default function ResetPasswordPage() {
                     value={confirma}
                     onChange={(e) => setConfirma(e.target.value)}
                     placeholder="Repita a senha"
-                    className="w-full h-11 bg-dark-700 border border-dark-600 rounded-xl
-                               pl-10 pr-4 text-white text-sm placeholder:text-gray-600
-                               focus:border-brand-500 focus:outline-none transition-colors"
+                    className="input pl-10 h-11"
                   />
                 </div>
               </div>

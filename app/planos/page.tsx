@@ -5,11 +5,12 @@ import { useSession, signOut }               from "next-auth/react";
 import { useRouter }                         from "next/navigation";
 import Link                                  from "next/link";
 import {
-  UtensilsCrossed, Check, LogOut, ArrowLeft,
+  Check, LogOut, ArrowLeft,
   AlertTriangle, Clock, Ban, CheckCircle2,
   Copy, CheckCheck, Loader2, QrCode,
 } from "lucide-react";
 import { formatCurrency } from "@/utils/formatCurrency";
+import { Wordmark } from "@/components/brand/Wordmark";
 
 type PlanoId = "BASICO" | "PRO" | "ENTERPRISE";
 
@@ -181,7 +182,7 @@ export default function PlanosPage() {
         <div className="w-full max-w-sm space-y-4">
 
           <div className="flex flex-col items-center mb-2">
-            <div className="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center mb-2">
+            <div className="w-10 h-10 rounded-xl bg-dark-700 flex items-center justify-center mb-2">
               <QrCode className="text-white" size={20} />
             </div>
             <h2 className="text-lg font-bold text-white">Pague com PIX</h2>
@@ -246,15 +247,10 @@ export default function PlanosPage() {
         {/* Topo */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center shrink-0">
-              <UtensilsCrossed className="text-white" size={20} />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-white leading-tight">LancheSmart</h1>
-              {session?.user?.lanchonete_nome && (
-                <p className="text-xs text-gray-500">{session.user.lanchonete_nome}</p>
-              )}
-            </div>
+            <Wordmark />
+            {session?.user?.lanchonete_nome && (
+              <p className="text-xs text-dark-300">{session.user.lanchonete_nome}</p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {!bloqueado && (
@@ -294,7 +290,7 @@ export default function PlanosPage() {
 
         {/* Cabeçalho */}
         <div className="text-center mb-6">
-          <h2 className="text-xl font-bold text-white">Planos LancheSmart</h2>
+          <h2 className="text-xl font-semibold text-dark-100">Planos food.bee</h2>
           <p className="text-sm text-gray-500 mt-1">
             Escolha o plano ideal para o tamanho da sua lanchonete.
           </p>

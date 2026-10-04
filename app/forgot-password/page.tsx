@@ -2,7 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import Link                          from "next/link";
-import { UtensilsCrossed, Mail, ArrowLeft, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Mail, ArrowLeft, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Wordmark } from "@/components/brand/Wordmark";
 
 export default function ForgotPasswordPage() {
   const [email,   setEmail]   = useState("");
@@ -34,11 +35,8 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-sm">
 
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-brand-500 flex items-center justify-center mb-3">
-            <UtensilsCrossed className="text-white" size={26} />
-          </div>
-          <h1 className="text-2xl font-bold text-white">LancheSmart</h1>
-          <p className="text-gray-500 text-sm mt-1">Recuperar senha</p>
+          <Wordmark size="lg" />
+          <p className="text-dark-300 text-sm mt-2">Recuperar senha</p>
         </div>
 
         <div className="card p-6">
@@ -68,9 +66,7 @@ export default function ForgotPasswordPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="seu@email.com"
-                    className="w-full h-11 bg-dark-700 border border-dark-600 rounded-xl
-                               pl-10 pr-4 text-white text-sm placeholder:text-gray-600
-                               focus:border-brand-500 focus:outline-none transition-colors"
+                    className="input pl-10 h-11"
                   />
                 </div>
               </div>

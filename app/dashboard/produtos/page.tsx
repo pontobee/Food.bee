@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/utils/formatCurrency";
 import type { ProdutoDTO } from "@/types";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -66,7 +68,7 @@ function CategoriaModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 px-0 sm:px-4">
-      <div className="w-full max-w-md bg-dark-800 border border-dark-600 rounded-t-2xl sm:rounded-2xl flex flex-col">
+      <div className="w-full max-w-md bg-dark-800 border border-dark-500/60 rounded-t-xl sm:rounded-xl flex flex-col">
         <div className="flex items-center justify-between px-4 py-3 border-b border-dark-600 shrink-0">
           <h2 className="font-bold text-white">{editando ? "Editar categoria" : "Nova categoria"}</h2>
           <button onClick={onClose} className="btn-ghost px-2"><X size={16} /></button>
@@ -80,8 +82,7 @@ function CategoriaModal({
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Ex.: Lanches, Bebidas, Sobremesas"
-              className="w-full h-10 bg-dark-700 border border-dark-600 rounded-lg px-3
-                         text-sm text-white placeholder:text-gray-600 focus:border-brand-500 focus:outline-none"
+              className="input"
             />
           </div>
 
@@ -92,8 +93,7 @@ function CategoriaModal({
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
               placeholder="Opcional"
-              className="w-full h-10 bg-dark-700 border border-dark-600 rounded-lg px-3
-                         text-sm text-white placeholder:text-gray-600 focus:border-brand-500 focus:outline-none"
+              className="input"
             />
           </div>
 
@@ -202,7 +202,7 @@ function ProdutoModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 px-0 sm:px-4">
-      <div className="w-full max-w-lg bg-dark-800 border border-dark-600 rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[92dvh]">
+      <div className="w-full max-w-lg bg-dark-800 border border-dark-500/60 rounded-t-xl sm:rounded-xl flex flex-col max-h-[92dvh]">
         <div className="flex items-center justify-between px-4 py-3 border-b border-dark-600 shrink-0">
           <h2 className="font-bold text-white">{editando ? "Editar produto" : "Novo produto"}</h2>
           <button onClick={onClose} className="btn-ghost px-2"><X size={16} /></button>
@@ -216,8 +216,7 @@ function ProdutoModal({
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Ex.: X-Burguer, Coca-Cola 350ml"
-              className="w-full h-10 bg-dark-700 border border-dark-600 rounded-lg px-3
-                         text-sm text-white placeholder:text-gray-600 focus:border-brand-500 focus:outline-none"
+              className="input"
             />
           </div>
 
@@ -305,8 +304,7 @@ function ProdutoModal({
               value={imagemUrl}
               onChange={(e) => setImagemUrl(e.target.value)}
               placeholder="https://..."
-              className="w-full h-10 bg-dark-700 border border-dark-600 rounded-lg px-3
-                         text-sm text-white placeholder:text-gray-600 focus:border-brand-500 focus:outline-none"
+              className="input"
             />
           </div>
 
@@ -382,7 +380,7 @@ function ConfirmModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-      <div className="w-full max-w-sm bg-dark-800 border border-dark-600 rounded-2xl p-5 space-y-4">
+      <div className="w-full max-w-sm bg-dark-800 border border-dark-500/60 rounded-xl p-5 space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
             <AlertTriangle size={17} className="text-red-400" />
@@ -438,10 +436,10 @@ export default function ProdutosPage() {
   if (!isAdmin) {
     return (
       <div className="card p-8 flex flex-col items-center text-center max-w-md mx-auto mt-10">
-        <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
+        <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center mb-4">
           <Lock size={22} className="text-red-400" />
         </div>
-        <h1 className="text-lg font-bold text-white">Acesso restrito</h1>
+        <h1 className="text-lg font-semibold text-dark-100">Acesso restrito</h1>
         <p className="text-sm text-gray-500 mt-2">Apenas administradores podem gerenciar o cardápio.</p>
       </div>
     );
@@ -467,41 +465,39 @@ export default function ProdutosPage() {
     <>
       <div className="space-y-5">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-white">Cardápio</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {produtos.length} {produtos.length === 1 ? "produto" : "produtos"} ·{" "}
-              {categorias.length} {categorias.length === 1 ? "categoria" : "categorias"}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setModal({ tipo: "nova-categoria" })}
-              className="btn-ghost text-sm"
-            >
-              <Tag size={14} /> Nova categoria
-            </button>
-            <button
-              onClick={() => setModal({ tipo: "novo-produto" })}
-              className="btn-primary text-sm"
-            >
-              <Plus size={14} /> Novo produto
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title="Cardápio"
+          description={`${produtos.length} ${produtos.length === 1 ? "produto" : "produtos"} · ${categorias.length} ${categorias.length === 1 ? "categoria" : "categorias"}`}
+          actions={
+            <div className="flex gap-2">
+              <button
+                onClick={() => setModal({ tipo: "nova-categoria" })}
+                className="btn-ghost text-sm"
+              >
+                <Tag size={14} /> Nova categoria
+              </button>
+              <button
+                onClick={() => setModal({ tipo: "novo-produto" })}
+                className="btn-primary text-sm"
+              >
+                <Plus size={14} /> Novo produto
+              </button>
+            </div>
+          }
+        />
 
         {/* Abas */}
-        <div className="flex gap-1 p-1 bg-dark-800 rounded-xl w-fit border border-dark-600">
+        <div className="flex gap-1 p-1 bg-dark-800 rounded-lg w-fit border border-dark-500/50">
           {(["produtos", "categorias"] as Aba[]).map((a) => (
             <button
               key={a}
               onClick={() => setAba(a)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                aba === a ? "bg-brand-500 text-white" : "text-gray-400 hover:text-white"
-              }`}
+              className={aba === a ? "tab tab-active relative" : "tab"}
             >
               {a === "produtos" ? "Produtos" : "Categorias"}
+              {aba === a && (
+                <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-brand-500" />
+              )}
             </button>
           ))}
         </div>
@@ -515,26 +511,26 @@ export default function ProdutosPage() {
                 placeholder="Filtrar produtos..."
                 value={filtro}
                 onChange={(e) => setFiltro(e.target.value)}
-                className="h-9 bg-dark-700 border border-dark-600 rounded-lg px-3
-                           text-sm text-white placeholder:text-gray-600
-                           focus:border-brand-500 focus:outline-none w-64"
+                className="input w-64"
               />
             )}
 
             {loadingP ? (
               <p className="text-gray-500 text-sm">Carregando...</p>
             ) : produtosFiltrados.length === 0 ? (
-              <div className="card p-12 flex flex-col items-center text-center">
-                <BookOpen size={32} className="text-gray-600 mb-3" />
-                <p className="text-white font-medium">Nenhum produto cadastrado</p>
-                <p className="text-sm text-gray-500 mt-1">Crie o primeiro produto do seu cardápio.</p>
-                <button
-                  onClick={() => setModal({ tipo: "novo-produto" })}
-                  className="btn-primary mt-4 text-sm"
-                >
-                  <Plus size={14} /> Novo produto
-                </button>
-              </div>
+              <EmptyState
+                icon={<BookOpen size={18} />}
+                title="Nenhum produto cadastrado"
+                description="Crie o primeiro produto do seu cardápio."
+                action={
+                  <button
+                    onClick={() => setModal({ tipo: "novo-produto" })}
+                    className="btn-primary text-sm"
+                  >
+                    <Plus size={14} /> Novo produto
+                  </button>
+                }
+              />
             ) : (
               <div className="card overflow-hidden">
                 <table className="w-full text-sm">
@@ -612,17 +608,19 @@ export default function ProdutosPage() {
             {loadingC ? (
               <p className="text-gray-500 text-sm">Carregando...</p>
             ) : categorias.length === 0 ? (
-              <div className="card p-12 flex flex-col items-center text-center">
-                <Tag size={32} className="text-gray-600 mb-3" />
-                <p className="text-white font-medium">Nenhuma categoria cadastrada</p>
-                <p className="text-sm text-gray-500 mt-1">Crie categorias para organizar o cardápio.</p>
-                <button
-                  onClick={() => setModal({ tipo: "nova-categoria" })}
-                  className="btn-primary mt-4 text-sm"
-                >
-                  <Plus size={14} /> Nova categoria
-                </button>
-              </div>
+              <EmptyState
+                icon={<Tag size={18} />}
+                title="Nenhuma categoria cadastrada"
+                description="Crie categorias para organizar o cardápio."
+                action={
+                  <button
+                    onClick={() => setModal({ tipo: "nova-categoria" })}
+                    className="btn-primary text-sm"
+                  >
+                    <Plus size={14} /> Nova categoria
+                  </button>
+                }
+              />
             ) : (
               <div className="card overflow-hidden">
                 <table className="w-full text-sm">

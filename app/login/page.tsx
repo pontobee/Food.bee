@@ -4,7 +4,8 @@ import { useState, type FormEvent } from "react";
 import { signIn }                    from "next-auth/react";
 import { useRouter }                 from "next/navigation";
 import Link                          from "next/link";
-import { UtensilsCrossed, Mail, Lock, AlertCircle, Loader2 } from "lucide-react";
+import { Mail, Lock, AlertCircle, Loader2 } from "lucide-react";
+import { Wordmark } from "@/components/brand/Wordmark";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -45,75 +46,60 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-dark-900 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-
-        {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-brand-500 flex items-center justify-center mb-3">
-            <UtensilsCrossed className="text-white" size={26} />
-          </div>
-          <h1 className="text-2xl font-bold text-white">LancheSmart</h1>
-          <p className="text-gray-500 text-sm mt-1">Painel de gestão</p>
+          <Wordmark size="lg" />
+          <p className="text-dark-300 text-sm mt-2">Acesse o painel de gestão</p>
         </div>
 
-        {/* Card */}
         <div className="card p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-
-            {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                E-mail
-              </label>
+              <label className="label" htmlFor="email">E-mail</label>
               <div className="relative">
-                <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
+                <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-dark-300" />
                 <input
+                  id="email"
                   type="email"
                   required
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@sualanchonete.com"
-                  className="w-full h-11 bg-dark-700 border border-dark-600 rounded-xl
-                             pl-10 pr-4 text-white text-sm placeholder:text-gray-600
-                             focus:border-brand-500 focus:outline-none transition-colors"
+                  placeholder="admin@seuestabelecimento.com"
+                  className="input pl-10 h-11"
                 />
               </div>
             </div>
 
-            {/* Senha */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-medium text-gray-300">Senha</label>
+                <label className="text-xs font-medium text-dark-200" htmlFor="password">Senha</label>
                 <Link href="/forgot-password" className="text-xs text-brand-400 hover:text-brand-300 transition-colors">
                   Esqueci minha senha
                 </Link>
               </div>
               <div className="relative">
-                <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
+                <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-dark-300" />
                 <input
+                  id="password"
                   type="password"
                   required
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full h-11 bg-dark-700 border border-dark-600 rounded-xl
-                             pl-10 pr-4 text-white text-sm placeholder:text-gray-600
-                             focus:border-brand-500 focus:outline-none transition-colors"
+                  className="input pl-10 h-11"
                 />
               </div>
             </div>
 
-            {/* Erro */}
             {error && (
               <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30
-                              rounded-xl px-4 py-3 text-sm text-red-400">
+                              rounded-lg px-4 py-3 text-sm text-red-400">
                 <AlertCircle size={15} className="shrink-0" />
                 {error}
               </div>
             )}
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -121,19 +107,17 @@ export default function LoginPage() {
             >
               {loading
                 ? <Loader2 size={16} className="animate-spin" />
-                : "Entrar no painel"}
+                : "Entrar"}
             </button>
-
           </form>
         </div>
 
-        <p className="text-center text-sm text-gray-500 mt-4">
+        <p className="text-center text-sm text-dark-300 mt-4">
           Não tem uma conta?{" "}
           <Link href="/signup" className="text-brand-400 hover:text-brand-300 transition-colors">
             Criar conta grátis
           </Link>
         </p>
-
       </div>
     </main>
   );

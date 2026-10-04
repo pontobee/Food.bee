@@ -127,7 +127,7 @@ export function TicketComanda({ pedido }: TicketComandaProps) {
     }
     
     out += lineEq + "\n";
-    out += padC("LancheSmart - Gestão Inteligente", width) + "\n";
+    out += padC("food.bee", width) + "\n";
     
     return out;
   };
